@@ -67,6 +67,16 @@ def catalog_requested(question, tenant, *, include_ebooks=False):
     return not other_branch or other_branch not in question
 
 
+def catalog_label(book):
+    metadata = "；".join(value for value in (book["author"], book["isbn"], book["shelf"]) if value)
+    label = f"《{book['title']}》"
+    return f"{label}（{metadata}）" if metadata else label
+
+
+def registration_metadata(book):
+    return "；".join(value for value in (book["title"], book["author"], book["isbn"], book["shelf"]) if value)
+
+
 def catalog_evidence(conn, job):
     rows = conn.execute(
         """SELECT id,title,author,isbn,shelf,count(*) OVER () AS total FROM library_books
@@ -75,9 +85,7 @@ def catalog_evidence(conn, job):
     ).fetchall()
     evidence = []
     for book in rows:
-        metadata = "；".join(value for value in (book["author"], book["isbn"], book["shelf"]) if value)
-        label = f"《{book['title']}》"
-        evidence.append({"id": f"book-{book['id']}", "text": f"{label}（{metadata}）" if metadata else label})
+        evidence.append({"id": f"book-{book['id']}", "text": catalog_label(book)})
     total = rows[0]["total"] if rows else 0
     if total > len(evidence):
         heading = f"本馆共有 {total} 条可查阅的馆藏登记，以下是前 {len(evidence)} 条。"
@@ -336,7 +344,7 @@ def published_evidence(conn, job):
     words = re.findall(r"[\w-]+", job["query"].casefold())
     evidence = []
     for book in books:
-        catalog = "；".join(value for value in (book["title"], book["author"], book["isbn"], book["shelf"]) if value)
+        catalog = registration_metadata(book)
         if any(word in catalog.casefold() for word in words):
             evidence.append({"id": f"book-{book['id']}", "text": f"本馆馆藏登记：{catalog}"})
         for i, block in enumerate(book["blocks"] or []):

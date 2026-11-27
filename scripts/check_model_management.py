@@ -1,4 +1,5 @@
 """Exercise model registration and Agent routing in a disposable Compose project."""
+import json
 from uuid import uuid4
 
 from check_library import compose, req, terminal, upload_sample, wait_for
@@ -33,6 +34,10 @@ class Handler(BaseHTTPRequestHandler):
             if request:
                 assert len(request["documents"]) == 1 and "routerproof" in request["documents"][0]["text"]
                 data = {"answer": "模型 " + model, "citations": [request["documents"][0]["id"]]}
+                if request["question"].startswith("historyproof"):
+                    data["answer"] = request["documents"][0]["text"]
+                    with open("/tmp/library-history-requests.jsonl", "a") as log:
+                        print(json.dumps(request), file=log)
             else:
                 data = {"ok": True}
             result = {"choices": [{"message": {"content": json.dumps(data)}}]}
@@ -44,6 +49,49 @@ class Handler(BaseHTTPRequestHandler):
 
 ThreadingHTTPServer(("0.0.0.0", 8098), Handler).serve_forever()
 '''
+
+
+def check_archived_history(staff):
+    def publish_sample(label, text):
+        book_id = req("/v1/books", staff, {"title": label, "audience": "reader"}, status=201)["book_id"]
+        version = upload_sample(book_id, staff, text)
+        wait_for(lambda: req(f"/v1/ingestion-jobs/{version}", staff)["status"] == "ready")
+        req(f"/v1/books/{book_id}/versions/{version}/publish", staff, {"rights_basis": "Test-owned text"}, form=True)
+        return book_id, version
+
+    old_marker = "archived-fixture-content"
+    old_book, _ = publish_sample("旧版历史验收样例", "routerproof historyproofold " + old_marker)
+    _, live_version = publish_sample("当前历史验收样例", "routerproof historyproofcurrent 当期内容")
+
+    def ask(query, conversation=None):
+        payload = {"query": query}
+        if conversation:
+            payload["conversation_id"] = conversation
+        return req("/v1/agent/jobs", payload=payload, key=uuid4().hex, status=202)["job_id"]
+
+    def latest_request():
+        logs = compose("exec", "-T", "mock", "cat", "/tmp/library-history-requests.jsonl")
+        return json.loads(logs.splitlines()[-1])
+
+    root = ask("historyproofold")
+    archived_answer = terminal(root)
+    assert archived_answer["status"] == "succeeded" and old_marker in archived_answer["result"]["answer"]
+    prior = terminal(ask("historyproofcurrent", root))
+    assert prior["status"] == "succeeded"
+    assert old_marker in latest_request()["conversation"][0]["answer"]
+
+    req(f"/v1/admin/books/{old_book}?revision=1", staff, method="DELETE")
+    followup = terminal(ask("historyproofcurrent", root))
+    assert followup["status"] == "succeeded"
+    assert followup["result"]["citations"] == [f"book-version-{live_version}-0"]
+    sent = latest_request()
+    assert sent["question"] == "historyproofcurrent"
+    assert old_marker not in json.dumps(sent, ensure_ascii=False)
+    assert sent["conversation"] == [
+        {"question": "historyproofold", "answer": None},
+        {"question": "historyproofcurrent", "answer": prior["result"]["answer"]},
+    ]
+    assert req(f"/v1/jobs/{root}") == archived_answer
 
 
 def run():
@@ -95,10 +143,11 @@ def run():
             task = req("/v1/agent/jobs", payload={"query": tokens}, key=uuid4().hex, status=202)["job_id"]
             result = terminal(task)
             assert result["status"] == "succeeded" and result["result"]["answer"] == "模型 " + index, result
+        check_archived_history(staff)
         assert req(base, "south-staff") == []
     finally:
         req(settings_path, staff, original, method="PUT")
-    print("Model management passed: provider credential reuse, discovery, bulk add, routing and tenant isolation")
+    print("Model management passed: provider credential reuse, discovery, bulk add, routing, tenant isolation and archived history")
 
 
 if __name__ == "__main__":

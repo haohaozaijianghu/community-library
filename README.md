@@ -32,7 +32,7 @@ curl -fsS http://127.0.0.1:8080/v1/jobs/JOB_ID \
 
 API 启动迁移完成后，在同一数据库事务内导入 `fixtures/demo.json` 的身份和资料。Compose 将 `fixtures/` 只读挂载到 API。调整本地 fixture 后，运行 `docker compose restart api`，等 `/healthz` 就绪即可使用更新后的数据。
 
-每次启动同步 fixture 提供的 Bearer 凭据和示例资料。新增身份进入账号目录，新增、改写和移除的示例资料影响后续检索。历史答案保留原证据快照。已有账号的业务角色和启停状态以账号目录为准，由管理员调整。独立的 `fixtures/demo-phones.json` 给原版四个账号配对本地手机号。额外 fixture 身份可选择填写 `phone`，无手机号的身份使用 Bearer 凭据。
+每次启动同步 fixture 提供的 Bearer 凭据和示例资料。新增身份进入账号目录，新增资料会导入，未由馆员编辑的资料会按 fixture 更新或移除。馆员编辑后保留自定义版本，撤回这类资料请使用后台「内容发布」。历史答案保留原证据快照。已有账号的业务角色和启停状态以账号目录为准，由管理员调整。独立的 `fixtures/demo-phones.json` 给原版四个账号配对本地手机号。额外 fixture 身份可选择填写 `phone`，无手机号的身份使用 Bearer 凭据。
 
 ## A 馆与 B 馆演示账号
 
@@ -76,7 +76,7 @@ A 馆对应题包北馆（`north`），B 馆对应南馆（`south`）。演示�
 
 管理员可在「问答与知识库管理 → 知识库」（`/admin/knowledge`）按图书展开版本，查看生效版本的正文索引、未生效版本的预览和馆规资料正文。检索测试可切换读者或馆员视角，按本馆 Agent 设置查看命中的电子书片段。Agent 试用侧栏显示同一检索库的摘要，上传与发布操作由馆藏管理处理。
 
-「智能问答」支持电子书和馆规与服务。连续提问留在同一会话，点击「新建对话」可另开一组。最近 50 个会话按最后一条消息的时间展示，刷新或重新打开会话可以继续追问。调用回答模型时会带上该会话的历史问答和本轮检索证据。历史问答的 JSON 预算为 24 KB，超出时优先发送最近的完整轮次，保留完整历史供回看。答案引用可展开核对原文。管理员在“Agent 配置”（`/admin/agent`）里设置本馆的书目信息检索、正文检索、证据数量与回答 Prompt。书目信息从馆藏直接读取，包含书名、作者、分类、ISBN 和馆藏位置，可用于检索和引用。附加 Prompt 会随证据保存到任务快照并送给绑定模型，且内置的证据、引用与 JSON 要求始终保留。模拟模型只用于验证调用、检索与引用流程。服务端只查本馆有权读取的已发布版本。原文段落以版本和段落序号建立 PostgreSQL 索引，答案来源可以定位到 PDF 页码、EPUB 章节或文本行号。历史答案保留当次证据。
+「智能问答」支持电子书和馆规与服务。连续提问留在同一会话，点击「新建对话」可另开一组。最近 50 个会话按最后一条消息的时间展示，刷新或重新打开会话可以继续追问。调用回答模型时会带上该会话的历史提问、仍可核验的历史答案和本轮检索证据。历史答案的资料一旦撤回、归档、替换版本或不再可见，系统会在后续模型调用中省略该回答。外部资料及无法按当前记录核验的汇总答案也会省略。历史问答的 JSON 预算为 24 KB，超出时优先发送最近的完整轮次，保留完整历史供回看。答案引用可展开核对原文。管理员在“Agent 配置”（`/admin/agent`）里设置本馆的书目信息检索、正文检索、证据数量与回答 Prompt。书目信息从馆藏直接读取，包含书名、作者、分类、ISBN 和馆藏位置，可用于检索和引用。附加 Prompt 会随证据保存到任务快照并送给绑定模型，且内置的证据、引用与 JSON 要求始终保留。模拟模型只用于验证调用、检索与引用流程。服务端只查本馆有权读取的已发布版本。原文段落以版本和段落序号建立 PostgreSQL 索引，答案来源可以定位到 PDF 页码、EPUB 章节或文本行号。历史答案保留当次证据。
 
 接口为 `POST /v1/agent/jobs` 提交、`GET /v1/agent/jobs` 查询自己的历史、`GET/PUT /v1/agent/settings` 由本馆管理员管理检索配置。答案与原文出处复用任务和引用接口。题包原有 `POST /v1/jobs` 仍负责馆规与服务，使用原版资料关键词，例如 `locker`。浏览器通过 `GET /v1/conversations` 和 `GET /v1/conversations/{job_id}` 读取会话和消息，旧的 `GET /v1/question-history` 继续提供单条任务历史。「Agent 试用」和读者端都可展开引用，后台「知识库」提供独立的检索测试。
 
@@ -206,7 +206,7 @@ A 馆对应题包北馆（`north`），B 馆对应南馆（`south`）。演示�
 docker compose -p "$TEST_PROJECT" logs --no-log-prefix api worker | grep -E 'model_attempt|model_switch|access_denied'
 ```
 
-[已通过的常规验收记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45928918143)
+[常规验收工作流](https://github.com/haohaozaijianghu/community-library/actions/workflows/verify.yml) · [提交 `90211a3` 的通过记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45932342019)
 
 ## Kubernetes 发布验证
 
@@ -222,7 +222,7 @@ bash scripts/check_kubernetes.sh
 
 ### GHCR 发布演练
 
-在 GitHub Actions 手动运行 [Release verification](.github/workflows/release-verify.yml)。发布作业将应用、模拟模型及故障演练用候选镜像以提交 SHA 标签推到 GHCR，并记录推送后的镜像摘要。后续作业在新建的 kind 集群内直接按摘要拉取镜像，复用上面的问答、重建和回滚检查。验收时核对两个作业均成功、镜像摘要与集群拉取记录一致，以及回滚后的旧任务和新任务均通过。该演练使用 mock 与虚构资料。[已通过的 GHCR 发布与回滚记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45926584503)。
+在 GitHub Actions 手动运行 [Release verification](.github/workflows/release-verify.yml)。发布作业将应用、模拟模型及故障演练用候选镜像以提交 SHA 标签推到 GHCR，并记录推送后的镜像摘要。后续作业在新建的 kind 集群内直接按摘要拉取镜像，复用上面的问答、重建和回滚检查。验收时核对两个作业均成功、镜像摘要与集群拉取记录一致，以及回滚后的旧任务和新任务均通过。该演练使用 mock 与虚构资料。[提交 `520c319` 的 GHCR 发布与回滚记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45926584503)。
 
 ## Prompt 修订
 

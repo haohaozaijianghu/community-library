@@ -10,6 +10,7 @@ from psycopg.types.json import Jsonb
 from library import agent, configured, gateway
 from library.books import catalog_evidence, catalog_requested, ingest, published_evidence
 from library.core import event, finish, fixture_evidence, pool, portal_evidence
+from library.history import readable_answers
 from library.portal import settings as portal_settings
 from library.sources import public_evidence
 
@@ -62,7 +63,6 @@ def step(conn):
         conn.execute("UPDATE library_jobs SET status='running' WHERE id=%s", (job["id"],))
 
     context = conversation_context(conn, job)
-    job["history"], job["history_truncated"] = model_history(context)
     if job["evidence"] is None:
         result = None
         if job["source_mode"] == "books":
@@ -119,6 +119,7 @@ def step(conn):
                  model["id"] if model else None),
             ).fetchone()
 
+    job["history"], job["history_truncated"] = model_history(readable_answers(conn, job, context))
     if attempt["provider"] == "configured":
         outcome, result = configured.generate(conn, job, attempt, recovery)
     elif recovery:
