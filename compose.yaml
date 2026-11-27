@@ -1,0 +1,76 @@
+name: community-library
+services:
+  mock:
+    build: ./mock
+    environment:
+      MOCK_PRIMARY_MODE: "${MOCK_PRIMARY_MODE:-ok}"
+      MOCK_BACKUP_MODE: "${MOCK_BACKUP_MODE:-ok}"
+    ports:
+      - "127.0.0.1:${LIBRARY_MOCK_PORT:-8091}:8091"
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: library
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library-local
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./library/schema.sql:/docker-entrypoint-initdb.d/10-library.sql:ro
+      - ./library/agent_schema.sql:/docker-entrypoint-initdb.d/11-agent.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "library", "-d", "library"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+  api:
+    build: .
+    environment: &library-env
+      DATABASE_URL: postgresql://library:library-local@db:5432/library
+      LIBRARY_DEMO_TOKENS: "${LIBRARY_DEMO_TOKENS:-1}"
+      LIBRARY_LOCAL_PHONE_LOGIN: "${LIBRARY_LOCAL_PHONE_LOGIN:-1}"
+      LIBRARY_SMS_GATEWAY_URL: "${LIBRARY_SMS_GATEWAY_URL:-}"
+      LIBRARY_SMS_GATEWAY_TOKEN: "${LIBRARY_SMS_GATEWAY_TOKEN:-}"
+      LIBRARY_MODEL_SECRET_KEY: "${LIBRARY_MODEL_SECRET_KEY:-}"
+      LIBRARY_CUSTOM_MODEL_URL: "${LIBRARY_CUSTOM_MODEL_URL:-}"
+      LIBRARY_FILE_ROOT: /var/lib/library/files
+      LIBRARY_MOCK_URL: http://mock:8091
+      LIBRARY_WEB_ENABLED: "${LIBRARY_WEB_ENABLED:-0}"
+      LIBRARY_NOTICE_FEEDS: "${LIBRARY_NOTICE_FEEDS:-}"
+      LIBRARY_NOTICE_FEED_OPTIONS: "${LIBRARY_NOTICE_FEED_OPTIONS:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${LIBRARY_HTTP_PORT:-8080}:8000"
+    volumes:
+      - book-files:/var/lib/library/files
+      - ./fixtures:/app/fixtures:ro
+    command: ["uvicorn", "library.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://localhost:8000/healthz', timeout=2).close()"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  worker:
+    build: .
+    environment:
+      <<: *library-env
+      LIBRARY_CRASH_AFTER_SUCCESS: "${LIBRARY_CRASH_AFTER_SUCCESS:-0}"
+      LIBRARY_SEED_DEMO_BOOKS: "${LIBRARY_SEED_DEMO_BOOKS:-1}"
+    depends_on:
+      db:
+        condition: service_healthy
+      mock:
+        condition: service_started
+      api:
+        condition: service_healthy
+    volumes:
+      - book-files:/var/lib/library/files
+    command: ["python", "-m", "library.worker"]
+
+    post_start:
+      - command: ["python", "scripts/seed_demo_books.py", "--compose", "--base-url", "http://api:8000"]
+
+volumes:
+  db-data:
+  book-files:

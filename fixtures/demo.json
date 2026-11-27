@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {"token": "demo-north-reader", "tenant_id": "north", "user_id": "reader", "role": "reader"},
+    {"token": "demo-north-staff", "tenant_id": "north", "user_id": "staff", "role": "staff"},
+    {"token": "demo-south-reader", "tenant_id": "south", "user_id": "reader", "role": "reader"},
+    {"token": "demo-south-staff", "tenant_id": "south", "user_id": "staff", "role": "staff"}
+  ],
+  "documents": [
+    {"id": "north-locker-guide", "tenant_id": "north", "audience": "reader", "keywords": ["locker"], "text": "北馆储物柜在一层服务台旁。读者可以免费使用至当天闭馆。"},
+    {"id": "north-locker-staff", "tenant_id": "north", "audience": "staff", "keywords": ["locker"], "text": "北馆馆员每周二将长期寄存物品移交失物招领。"},
+    {"id": "south-locker-guide", "tenant_id": "south", "audience": "reader", "keywords": ["locker"], "text": "南馆储物柜在二层阅览室入口。读者可以使用两小时。"},
+    {"id": "south-locker-staff", "tenant_id": "south", "audience": "staff", "keywords": ["locker"], "text": "南馆馆员每周五汇总储物柜维护记录。"}
+  ]
+}

@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>社区图书馆</title>
+  <link rel="stylesheet" href="/library-assets/style.css">
+  <script src="/library-assets/main.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><span class="mark" aria-hidden="true">馆</span>社区图书馆</div>
+    <nav class="reader-breadcrumb" aria-label="当前位置">
+      <a href="#reader-home" data-portal-link>首页</a>
+      <span aria-hidden="true">/</span>
+      <span id="reader-breadcrumb-page" aria-current="page">服务大厅</span>
+    </nav>
+    <div id="account" hidden>
+      <details id="account-menu">
+        <summary><span class="avatar" aria-hidden="true"></span><span id="account-name"></span><span class="chevron" aria-hidden="true"></span></summary>
+        <div class="account-actions"><span id="account-error" role="alert"></span><button id="sign-out" class="text-button">退出登录</button></div>
+      </details>
+    </div>
+  </header>
+  <nav id="reader-nav" aria-label="读者导航" hidden>
+    <div class="portal-navigation-brand">
+      <span class="portal-brand-mark" aria-hidden="true"><i class="reader-icon icon-guide"></i></span>
+      <div><strong>社区图书馆</strong><span>读者服务</span></div>
+    </div>
+    <button id="reader-menu" type="button" aria-expanded="false" aria-controls="reader-menu-items">读者菜单</button>
+    <div id="reader-menu-items" class="portal-navigation">
+      <a href="#reader-home"><i class="reader-icon icon-home" aria-hidden="true"></i><span>系统首页</span></a>
+      <a href="#ask-library"><i class="reader-icon icon-chat" aria-hidden="true"></i><span>智能问答</span></a>
+      <a href="#reader-catalog"><i class="reader-icon icon-search" aria-hidden="true"></i><span>图书查询</span></a>
+      <a href="#borrow-guide"><i class="reader-icon icon-guide" aria-hidden="true"></i><span>借阅指南</span></a>
+      <a href="#community-services"><i class="reader-icon icon-calendar" aria-hidden="true"></i><span>社区活动</span></a>
+      <a href="#reader-faq"><i class="reader-icon icon-help" aria-hidden="true"></i><span>常见问题</span></a>
+      <a href="#my-questions" class="reader-personal-start"><i class="reader-icon icon-history" aria-hidden="true"></i><span>我的提问</span></a>
+      <a href="#personal-center"><i class="reader-icon icon-person" aria-hidden="true"></i><span>个人中心</span></a>
+      <button id="reader-nav-signout" type="button"><i class="reader-icon icon-exit" aria-hidden="true"></i><span>退出登录</span></button>
+    </div>
+  </nav>
+  <main>
+    <section id="login" class="login">
+      <div class="intro">
+        <div class="intro-copy">
+          <h1>书香润社区</h1>
+          <p>查找本馆的电子书、了解馆内服务，并查看答案的资料出处。</p>
+        </div>
+      </div>
+      <div class="login-panel">
+        <form id="login-form" aria-labelledby="login-title">
+          <h2 id="login-title" tabindex="-1">登录图书馆</h2>
+          <fieldset class="login-method" aria-label="登录方式">
+            <label><input type="radio" name="login_method" value="password" checked><span>账号登录</span></label>
+            <label><input type="radio" name="login_method" value="code"><span>手机验证码登录</span></label>
+          </fieldset>
+          <fieldset class="login-types" aria-label="登录身份">
+            <label><input type="radio" name="login_type" value="user" checked><span>读者</span></label>
+            <label><input type="radio" name="login_type" value="admin"><span>管理员</span></label>
+          </fieldset>
+          <div id="login-password-fields" class="auth-fields">
+            <div>
+              <label for="login-identifier">账号</label>
+              <input id="login-identifier" autocomplete="username" maxlength="24" autocapitalize="none" spellcheck="false" placeholder="用户名或已绑定的手机号" required>
+            </div>
+            <div>
+              <label for="login-password">密码</label>
+              <input id="login-password" name="password" type="password" autocomplete="current-password" maxlength="128" placeholder="请输入登录密码" required>
+            </div>
+          </div>
+          <div id="login-code-fields" class="auth-fields" hidden>
+            <div>
+              <label for="phone">手机号</label>
+              <input id="phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="11" pattern="1[3-9][0-9]{9}" placeholder="11 位手机号" required disabled>
+            </div>
+            <div>
+              <label for="code">验证码</label>
+              <div class="code-field">
+                <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6 位验证码" required disabled>
+                <button id="send-code" type="button" class="secondary">获取验证码</button>
+              </div>
+            </div>
+            <p id="demo-hint"></p>
+            <p id="code-message" role="status"></p>
+          </div>
+          <p id="login-error" class="error" role="alert" hidden></p>
+          <button id="login-submit" class="auth-submit" type="submit">登 录</button>
+          <p id="password-reset-link" class="auth-switch"><button id="open-password-reset" type="button" class="text-button">忘记密码？</button></p>
+          <p id="auth-reset-success" class="field-note" role="status"></p>
+          <p class="auth-switch">还没有读者账号？ <button id="open-registration" type="button" class="text-button">立即注册</button></p>
+        </form>
+        <form id="password-reset-form" aria-labelledby="password-reset-title" hidden>
+          <h2 id="password-reset-title" tabindex="-1">重置密码</h2>
+          <div class="auth-fields">
+            <label for="reset-role">登录身份<select id="reset-role" name="login_type"><option value="user">读者</option><option value="admin">管理员</option></select></label>
+            <label for="reset-phone">已绑定手机号<input id="reset-phone" name="phone" type="tel" autocomplete="tel-national" pattern="1[3-9][0-9]{9}" maxlength="11" required></label>
+            <div><label for="reset-code">手机验证码</label><div class="code-field">
+              <input id="reset-code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+              <button id="reset-send-code" type="button" class="secondary">获取验证码</button>
+            </div><p id="reset-code-message" class="field-note" role="status"></p></div>
+            <label for="reset-password">新密码<input id="reset-password" name="password" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+            <label for="reset-confirm">确认新密码<input id="reset-confirm" type="password" minlength="12" maxlength="128" autocomplete="new-password" required></label>
+          </div>
+          <p id="reset-error" class="error" role="alert" hidden></p>
+          <button id="reset-submit" class="auth-submit" type="submit">重置密码</button>
+          <p class="auth-switch"><button id="cancel-password-reset" type="button" class="text-button">返回登录</button></p>
+        </form>
+        <form id="register-form" aria-labelledby="register-title" hidden>
+          <h2 id="register-title" tabindex="-1">注册读者账号</h2>
+          <div class="auth-fields register-fields">
+            <div>
+              <label for="register-tenant">所属图书馆</label>
+              <select id="register-tenant" name="tenant_id" required>
+                <option value="">请选择分馆</option>
+                <option value="north">北馆（A 馆）</option>
+                <option value="south">南馆（B 馆）</option>
+              </select>
+            </div>
+            <div>
+              <label for="register-username">用户名</label>
+              <input id="register-username" name="username" autocomplete="username" pattern="[a-zA-Z][a-zA-Z0-9_\-]{3,23}" maxlength="24" autocapitalize="none" spellcheck="false" aria-describedby="register-username-help" required>
+              <p id="register-username-help" class="field-note">4 至 24 位，以英文字母开头，可用数字、下划线和连字符。</p>
+            </div>
+            <div>
+              <label for="register-phone">手机号</label>
+              <input id="register-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="11" pattern="1[3-9][0-9]{9}" placeholder="11 位手机号" required>
+            </div>
+            <div>
+              <label for="register-code">手机验证码</label>
+              <div class="code-field">
+                <input id="register-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6 位验证码" required>
+                <button id="register-send-code" type="button" class="secondary">获取验证码</button>
+              </div>
+              <p id="register-code-message" class="field-note" role="status"></p>
+            </div>
+            <div>
+              <label for="register-password">密码</label>
+              <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="至少 12 个字符" required>
+            </div>
+            <div>
+              <label for="register-confirm">确认密码</label>
+              <input id="register-confirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+            </div>
+          </div>
+          <p id="register-error" class="error" role="alert" hidden></p>
+          <button id="register-submit" class="auth-submit" type="submit">注册并登录</button>
+          <p class="auth-switch">已有账号？ <button id="back-to-login" type="button" class="text-button">返回登录</button></p>
+        </form>
+      </div>
+    </section>
+    <section id="workspace" hidden>
+      <h1 id="workspace-title" tabindex="-1"></h1>
+      <nav id="staff-nav" class="admin-navigation" aria-label="管理后台" hidden>
+        <p class="admin-navigation-title">图书馆管理后台</p>
+        <a id="show-overview" href="/admin" data-admin-view="overview">工作台</a>
+        <section class="admin-nav-group" aria-labelledby="nav-access-title">
+          <p id="nav-access-title">用户与权限管理</p>
+          <a id="show-accounts" href="/admin/settings/accounts" data-admin-view="accounts">账号管理</a>
+        </section>
+        <section class="admin-nav-group" aria-labelledby="nav-knowledge-title">
+          <p id="nav-knowledge-title">问答与知识库管理</p>
+          <a href="/admin/knowledge" data-admin-view="knowledge">知识库</a>
+          <a id="show-agent" href="/admin/agent" data-admin-view="agent">Agent 配置</a>
+          <a id="show-reader" href="/admin/agent/preview" data-admin-view="reader">Agent 试用</a>
+          <a href="/admin/help" data-admin-view="help">人工问答</a>
+        </section>
+        <section class="admin-nav-group" aria-labelledby="nav-books-title">
+          <p id="nav-books-title">图书管理</p>
+          <a id="show-management" href="/admin/books" data-admin-view="management">馆藏管理</a>
+        </section>
+        <section class="admin-nav-group" aria-labelledby="nav-community-title">
+          <p id="nav-community-title">社区服务</p>
+          <a href="/admin/community" data-admin-view="community">内容发布</a>
+          <a href="/admin/portal" data-admin-view="portal">门户与账号设置</a>
+        </section>
+        <section class="admin-nav-group" aria-labelledby="nav-system-title">
+          <p id="nav-system-title">数据统计与系统管理</p>
+          <a id="show-models" href="/admin/settings/models" data-admin-view="models">模型管理</a>
+        </section>
+      </nav>
+      <div id="admin-toolbar" class="admin-toolbar" hidden>
+        <button id="toggle-staff-nav" type="button" aria-expanded="false" aria-controls="staff-nav">菜单</button>
+        <nav aria-label="当前位置">
+          <a href="/admin" data-admin-view="overview">管理后台</a>
+          <span id="admin-breadcrumb-group" hidden></span>
+          <span id="admin-breadcrumb-page" aria-current="page"></span>
+        </nav>
+      </div>
+      <section id="overview-view" aria-labelledby="overview-title" hidden>
+        <div class="admin-page-heading">
+          <div><h2 id="overview-title" tabindex="-1">工作台</h2><p id="overview-branch"></p></div>
+          <button id="refresh-overview" type="button" class="secondary">刷新数据</button>
+        </div>
+        <p id="overview-status" role="status"></p>
+        <div class="overview-metrics">
+          <a href="/admin/books?status=published" data-admin-view="management"><span>已发布电子书</span><strong id="metric-books">—</strong></a>
+          <a href="#overview-review"><span>待审核版本</span><strong id="metric-review">—</strong></a>
+          <a href="#overview-questions"><span>近 7 天提交问答</span><strong id="metric-questions">—</strong></a>
+          <a href="/admin/settings/accounts?status=active" data-admin-view="accounts"><span>启用账号</span><strong id="metric-accounts">—</strong></a>
+        </div>
+        <div class="overview-columns">
+          <section id="overview-review" class="panel" aria-labelledby="review-title">
+            <div class="section-heading"><h3 id="review-title">待审核电子版</h3><a href="/admin/books" data-admin-view="management">馆藏管理</a></div>
+            <div id="review-empty"></div>
+            <div id="review-table" class="accounts-table-wrap" hidden>
+              <table class="accounts-table"><thead><tr><th scope="col">图书 / 文件</th><th scope="col">上传时间</th><th scope="col">操作</th></tr></thead>
+                <tbody id="review-rows"></tbody>
+              </table>
+            </div>
+          </section>
+          <div class="overview-side">
+            <section id="overview-questions" class="panel" aria-labelledby="overview-questions-title">
+              <h3 id="overview-questions-title">近 7 天提交的问答</h3>
+              <dl class="overview-question-summary">
+                <div><dt>处理中</dt><dd id="questions-pending">—</dd></div>
+                <div><dt>已完成</dt><dd id="questions-completed">—</dd></div>
+                <div><dt>失败</dt><dd id="questions-failed">—</dd></div>
+              </dl>
+              <a href="/admin/agent/preview" data-admin-view="reader">进入 Agent 试用</a>
+            </section>
+            <section class="panel" aria-labelledby="overview-actions-title">
+              <h3 id="overview-actions-title">快捷操作</h3>
+              <div class="overview-shortcuts">
+                <a href="/admin/books?action=new" data-admin-view="management">登记新书</a>
+                <a href="/admin/agent" data-admin-view="agent">配置 Agent</a>
+                <a href="/admin/settings/accounts?action=new" data-admin-view="accounts">新增账号</a>
+                <a href="/admin/settings/models" data-admin-view="models">管理模型</a>
+                <a href="/admin/community?action=new" data-admin-view="community">新建公告</a>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+      <div id="reader-view" class="reader-home" hidden>
+        <aside class="reader-sidebar" aria-label="问答侧栏">
+          <button id="new-question" type="button"><span aria-hidden="true">＋</span> 新建对话</button>
+          <section class="consultation-categories" aria-labelledby="category-title">
+            <h2 id="category-title">咨询分类</h2>
+            <button type="button" data-consult-mode="books" aria-pressed="true">馆藏资源</button>
+            <button type="button" data-consult-mode="library" aria-pressed="false">馆规与服务</button>
+          </section>
+          <section id="my-questions" class="reader-history" aria-labelledby="history-title">
+            <div class="section-heading">
+              <h2 id="history-title" tabindex="-1">历史会话</h2>
+              <button id="refresh-history" class="text-button" type="button">刷新</button>
+            </div>
+            <div class="list-toolbar">
+              <input id="history-search" type="search" aria-label="搜索我的问答" placeholder="搜索会话">
+              <select id="history-filter" aria-label="按处理状态筛选">
+                <option value="">全部状态</option><option value="pending">处理中</option>
+                <option value="succeeded">已完成</option><option value="failed">失败</option>
+              </select>
+            </div>
+            <div id="job-history" aria-live="polite"></div>
+          </section>
+        </aside>
+        <div class="reader-content">
+          <section id="personal-center" class="history-panel" aria-labelledby="reader-profile-title" hidden>
+            <div class="section-heading">
+              <div>
+                <h2 id="reader-profile-title" tabindex="-1">个人中心</h2>
+                <p id="reader-profile-identity"></p>
+              </div>
+              <button id="reader-profile-signout" class="secondary" type="button">退出登录</button>
+            </div>
+            <p id="profile-status" role="status"></p>
+            <div id="profile-settings" hidden>
+              <section class="profile-block" aria-labelledby="profile-details-title">
+                <h3 id="profile-details-title">个人资料</h3>
+                <form id="profile-name-form">
+                  <label for="profile-name">昵称</label>
+                  <div class="profile-name-row">
+                    <input id="profile-name" name="display_name" type="text" autocomplete="nickname" maxlength="40" required>
+                    <button type="submit">保存昵称</button>
+                  </div>
+                  <p id="profile-name-status" role="status"></p>
+                </form>
+              </section>
+              <section class="profile-block" aria-labelledby="profile-security-title">
+                <h3 id="profile-security-title">账号安全</h3>
+                <details id="profile-phone-details">
+                  <summary><span>登录手机号</span> <small id="profile-phone-masked"></small><span class="profile-edit-label">更换</span></summary>
+                  <form id="profile-phone-form">
+                    <label for="profile-old-code">原手机号验证码</label>
+                    <div class="code-field">
+                      <input id="profile-old-code" name="old_code" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" required>
+                      <button type="button" class="secondary" data-profile-code="phone-old">获取验证码</button>
+                    </div>
+                    <p id="message-phone-old" role="status"></p>
+                    <label for="profile-new-phone">新手机号</label>
+                    <input id="profile-new-phone" name="new_phone" type="tel" inputmode="numeric" autocomplete="off" maxlength="11" pattern="1[3-9][0-9]{9}" required>
+                    <label for="profile-new-code">新手机号验证码</label>
+                    <div class="code-field">
+                      <input id="profile-new-code" name="new_code" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" required>
+                      <button type="button" class="secondary" data-profile-code="phone-new">获取验证码</button>
+                    </div>
+                    <p id="message-phone-new" role="status"></p>
+                    <button type="submit">确认更换</button>
+                    <p id="profile-phone-status" role="status"></p>
+                  </form>
+                </details>
+                <details id="profile-password-details">
+                  <summary><span>登录密码</span> <small id="profile-password-state"></small><span id="profile-password-action" class="profile-edit-label">设置</span></summary>
+                  <form id="profile-password-form">
+                    <div id="profile-current-password-fields" hidden>
+                      <label for="profile-current-password">当前密码</label>
+                      <input id="profile-current-password" name="current_password" type="password" autocomplete="current-password" maxlength="128" required disabled>
+                    </div>
+                    <label for="profile-new-password">新密码</label>
+                    <input id="profile-new-password" name="new_password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required aria-describedby="profile-password-help">
+                    <p id="profile-password-help" class="field-note">使用至少 12 个字符。</p>
+                    <label for="profile-password-confirm">确认新密码</label>
+                    <input id="profile-password-confirm" type="password" autocomplete="new-password" minlength="12" maxlength="128" required>
+                    <label for="profile-password-code">手机号验证码</label>
+                    <div class="code-field">
+                      <input id="profile-password-code" name="code" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" required>
+                      <button type="button" class="secondary" data-profile-code="password">获取验证码</button>
+                    </div>
+                    <p id="message-password" role="status"></p>
+                    <button type="submit">保存密码</button>
+                    <p id="profile-password-status" role="status"></p>
+                  </form>
+                </details>
+              </section>
+            </div>
+          </section>
+          <section id="reader-home" class="service-home" aria-labelledby="portal-title" hidden>
+            <div class="portal-hero">
+              <div>
+                <h2 id="portal-title" tabindex="-1">在这里，遇见更多知识</h2>
+                <p id="reader-portal-error" role="status"></p><p id="portal-intro">查询本馆馆藏、馆内服务和电子书内容。</p>
+                <form id="portal-question-form">
+                  <label for="portal-question" class="visually-hidden">咨询问题</label>
+                  <input id="portal-question" type="text" maxlength="200" placeholder="请输入您想咨询的问题">
+                  <button type="submit">立即提问</button>
+                </form>
+              </div>
+              <div class="portal-shelf" aria-hidden="true"><i></i><i></i><i></i></div>
+            </div>
+            <section class="portal-services" aria-labelledby="portal-services-title">
+              <h3 id="portal-services-title">快捷服务</h3>
+              <div class="portal-service-grid">
+                <a href="#ask-library" data-portal-link><span class="portal-service-icon" aria-hidden="true"><i class="reader-icon icon-chat"></i></span><strong>智能问答</strong></a>
+                <a href="#reader-catalog" data-portal-link><span class="portal-service-icon" aria-hidden="true"><i class="reader-icon icon-search"></i></span><strong>图书查询</strong></a>
+                <a href="#borrow-guide" data-portal-link><span class="portal-service-icon" aria-hidden="true"><i class="reader-icon icon-guide"></i></span><strong>借阅指南</strong></a>
+                <a href="#community-services" data-portal-link><span class="portal-service-icon" aria-hidden="true"><i class="reader-icon icon-calendar"></i></span><strong>社区活动</strong></a>
+              </div>
+            </section>
+            <div class="portal-panels">
+              <section class="history-panel" aria-labelledby="portal-faq-title">
+                <div class="section-heading"><h3 id="portal-faq-title">常见问题</h3><a href="#reader-faq" data-portal-link>查看全部</a></div>
+                <div id="portal-custom-faq" hidden></div><div id="portal-default-faq">
+                <button type="button" class="portal-faq" data-ask-example="catalog-example">本馆有哪些电子书？ <span aria-hidden="true">›</span></button>
+                <button type="button" class="portal-faq" data-ask-example="service-example">储物柜怎么用？ <span aria-hidden="true">›</span></button>
+                <a class="portal-faq" href="#reader-catalog" data-portal-link>如何按书名或作者查找图书？ <span aria-hidden="true">›</span></a>
+                <a class="portal-faq" href="#my-questions" data-portal-link>在哪里查看已提交的问题？ <span aria-hidden="true">›</span></a></div>
+              </section>
+              <section class="history-panel" aria-labelledby="portal-notices-title">
+                <div class="section-heading"><h3 id="portal-notices-title">通知公告</h3><a href="#community-services" data-portal-link>查看全部</a></div>
+                <div id="portal-notices" aria-live="polite"></div>
+              </section>
+            </div>
+          </section>
+          <section id="borrow-guide" class="history-panel" aria-labelledby="borrow-guide-title" hidden>
+            <div class="section-heading"><h2 id="borrow-guide-title" tabindex="-1">借阅指南</h2></div>
+            <div id="reader-guide-items" aria-live="polite"></div>
+            <button type="button" class="secondary" data-consult-mode="library">咨询本馆规则</button>
+          </section>
+          <section id="community-services" class="history-panel" aria-labelledby="community-services-title" hidden>
+            <div class="section-heading"><h2 id="community-services-title" tabindex="-1">社区活动与通知</h2>
+              <button id="refresh-notices" type="button" class="text-button">刷新</button>
+            </div>
+            <div id="reader-notices" aria-live="polite"></div>
+          </section>
+          <section id="reader-faq" class="history-panel" aria-labelledby="reader-faq-title" hidden>
+            <div class="section-heading"><h2 id="reader-faq-title" tabindex="-1">常见问题</h2></div>
+            <label for="reader-faq-search" class="visually-hidden">搜索常见问题</label>
+            <input id="reader-faq-search" type="search" placeholder="输入关键词搜索">
+            <div id="reader-custom-faq" hidden></div>
+            <div id="reader-faq-items">
+              <details><summary>如何查询馆藏图书？</summary><p>打开图书查询，可按书名、作者或 ISBN 筛选本馆已发布的电子书。</p><a href="#reader-catalog" data-portal-link>前往图书查询</a></details>
+              <details><summary>怎样查询本馆的储物柜规则？</summary><p>在借阅指南中查看本馆公开资料，也可以发起智能问答。</p><a href="#borrow-guide" data-portal-link>查看借阅指南</a></details>
+              <details><summary>提交问题后，在哪里查看答案？</summary><p>在我的提问中打开原记录，即可查看任务进度、答案和资料引用。</p><a href="#my-questions" data-portal-link>前往我的提问</a></details>
+            </div>
+            <p id="reader-faq-empty" hidden>没有匹配的问题。</p>
+          </section>
+          <section id="ask-library" class="chat-workspace" aria-labelledby="ask-heading">
+            <header class="chat-heading">
+              <span class="assistant-symbol" aria-hidden="true">馆</span>
+              <div><h2 id="ask-heading" tabindex="-1">智能问答</h2><p id="question-scope"></p></div>
+            </header>
+            <div class="chat-transcript">
+              <div id="question-welcome" class="question-welcome">
+                <p class="message-label">图书馆助手</p>
+                <p>你好！你可以按书名找书，查询书中内容，也可以问我本馆的服务规则。</p>
+              </div>
+              <div id="previous-turns"></div>
+              <section id="question-result" class="result-panel" aria-labelledby="result-title" hidden>
+                <h3 id="result-title" class="visually-hidden" tabindex="-1">问答结果</h3>
+                <div class="question-message">
+                  <p id="job-source" class="field-note"></p>
+                  <p id="result-question"></p>
+                </div>
+                <div class="answer-message">
+                  <p class="message-label">图书馆助手</p>
+                  <p id="job-status" role="status"></p>
+                  <div class="question-actions">
+                    <button id="refresh-question" type="button" class="secondary" hidden>查看最新状态</button>
+                    <button id="retry-question" type="button" class="secondary" hidden>重新提交</button>
+                  </div>
+                  <div id="response" hidden aria-live="polite">
+                    <p id="answer"></p>
+                    <div id="citations"></div>
+                  </div>
+                  <section id="reader-help" class="reader-help" hidden aria-label="人工问答">
+                    <p id="reader-help-status" role="status"></p>
+                    <p id="reader-help-reply"></p>
+                    <button id="request-reader-help" type="button" class="secondary">转人工咨询</button>
+                    <button id="refresh-reader-help" type="button" class="secondary" hidden>刷新人工回复</button>
+                  </section>
+                </div>
+              </section>
+            </div>
+            <div class="chat-composer">
+              <div id="custom-question-suggestions" class="question-suggestions" aria-label="快捷提问" hidden></div>
+              <div id="default-question-suggestions" class="question-suggestions" aria-label="快捷提问">
+                <button id="catalog-example" type="button">本馆有哪些电子书？ <span aria-hidden="true">↗</span></button>
+                <button id="service-example" type="button">储物柜怎么用？ <span aria-hidden="true">↗</span></button>
+              </div>
+              <p id="conversation-status" class="field-note" role="status"></p>
+              <form id="question-form">
+                <fieldset class="question-modes">
+                  <legend class="visually-hidden">资料范围</legend>
+                  <label><input type="radio" name="question-mode" value="books" checked> 电子书</label>
+                  <label id="service-mode"><input type="radio" name="question-mode" value="library"> 馆规与服务</label>
+                </fieldset>
+                <label for="question" class="visually-hidden">向图书馆提问</label>
+                <div class="ask-field">
+                  <textarea id="question" rows="2" maxlength="200" required placeholder="输入书名，或问一个和书籍内容有关的问题"></textarea>
+                  <button id="ask" type="submit">提问 <span aria-hidden="true">↗</span></button>
+                </div>
+              </form>
+            </div>
+          </section>
+          <section id="reader-catalog" class="history-panel" aria-labelledby="reader-catalog-title" hidden>
+            <div class="section-heading">
+              <h2 id="reader-catalog-title" tabindex="-1">浏览馆藏</h2>
+              <button id="refresh-catalog" class="text-button" type="button">刷新</button>
+            </div>
+            <div class="list-toolbar"><input id="reader-catalog-search" type="search" placeholder="搜索书名、作者或 ISBN" aria-label="搜索已发布馆藏">
+              <select id="reader-category" aria-label="图书分类"><option value="">全部分类</option></select></div>
+            <div id="reader-catalog-items"></div>
+          </section>
+        </div>
+        <aside id="consultation-faq" class="history-panel" aria-labelledby="consultation-faq-title">
+          <section id="preview-knowledge" aria-labelledby="preview-knowledge-title" hidden>
+            <h3 id="preview-knowledge-title">本馆知识库</h3>
+            <p id="preview-knowledge-status" class="field-note" role="status"></p>
+            <a href="/admin/knowledge" data-admin-view="knowledge">查看索引与版本</a>
+          </section>
+          <h3 id="consultation-faq-title">常见问题</h3>
+          <button type="button" class="portal-faq" data-ask-example="catalog-example">本馆有哪些电子书？ <span aria-hidden="true">›</span></button>
+          <button type="button" class="portal-faq" data-ask-example="service-example">储物柜怎么用？ <span aria-hidden="true">›</span></button>
+          <a id="browse-from-faq" href="#reader-catalog" data-portal-link>前往馆藏查询 <span aria-hidden="true">›</span></a>
+        </aside>
+      </div>
+      <section id="knowledge-view" aria-labelledby="knowledge-title" hidden>
+        <div class="admin-page-heading">
+          <div><h2 id="knowledge-title" tabindex="-1">知识库</h2><p id="knowledge-scope"></p></div>
+          <button id="refresh-knowledge" type="button" class="secondary">刷新</button>
+        </div>
+        <p id="knowledge-status" role="status"></p>
+        <dl class="knowledge-metrics">
+          <div><dt>已发布电子书</dt><dd id="knowledge-book-count">—</dd></div>
+          <div><dt>已发布正文片段</dt><dd id="knowledge-passage-count">—</dd></div>
+          <div><dt>已发布馆规与服务资料</dt><dd id="knowledge-material-count">—</dd></div>
+        </dl>
+        <nav class="knowledge-navigation" aria-label="知识库功能">
+          <button type="button" data-knowledge-section="documents" aria-controls="knowledge-documents" aria-pressed="true">文档与版本</button>
+          <button type="button" data-knowledge-section="materials" aria-controls="knowledge-materials" aria-pressed="false">馆规资料</button>
+          <button type="button" data-knowledge-section="search" aria-controls="knowledge-search" aria-pressed="false">检索测试</button>
+        </nav>
+        <section id="knowledge-documents" class="panel knowledge-panel" aria-labelledby="knowledge-books-title">
+          <div class="section-heading">
+            <h3 id="knowledge-books-title">文档目录</h3>
+            <a href="/admin/books?action=new" data-admin-view="management" class="knowledge-link">新增图书</a>
+          </div>
+          <p id="knowledge-index-note" class="field-note"></p>
+          <div class="list-toolbar">
+            <input id="knowledge-book-filter" type="search" aria-label="搜索文档" placeholder="搜索书名、作者、分类或 ISBN">
+            <select id="knowledge-version-filter" aria-label="筛选版本状态">
+              <option value="">全部版本状态</option><option value="published">已发布</option>
+              <option value="ready">待发布</option><option value="processing">处理中</option>
+              <option value="failed">解析失败</option><option value="empty">未上传</option>
+            </select>
+          </div>
+          <p id="knowledge-books-empty" class="field-note" role="status" hidden></p>
+          <div id="knowledge-book-rows" class="knowledge-documents"></div>
+        </section>
+        <section id="knowledge-materials" class="panel knowledge-panel" aria-labelledby="knowledge-materials-title" hidden>
+          <div class="section-heading"><h3 id="knowledge-materials-title">馆规与服务资料</h3><a href="/admin/community" data-admin-view="community">内容发布</a></div>
+          <p id="knowledge-materials-empty" class="field-note" hidden>本馆暂无馆规与服务资料。</p>
+          <div class="accounts-table-wrap">
+            <table class="accounts-table" aria-label="馆规与服务资料">
+              <thead><tr><th scope="col">标题</th><th scope="col">类型</th><th scope="col">可见范围</th><th scope="col">发布状态</th><th scope="col">操作</th></tr></thead>
+              <tbody id="knowledge-material-rows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="knowledge-search" class="panel knowledge-panel" aria-labelledby="knowledge-search-title" hidden>
+          <div class="section-heading"><h3 id="knowledge-search-title">检索测试</h3><a href="/admin/agent" data-admin-view="agent">Agent 配置</a></div>
+          <p class="field-note">查看不同身份实际命中的本馆电子书或馆规资料。</p>
+          <form id="knowledge-search-form">
+            <label for="knowledge-search-query">检索词</label>
+            <input id="knowledge-search-query" name="query" maxlength="200" placeholder="例如 香樟 或 locker" required>
+            <div class="knowledge-search-actions">
+              <label for="knowledge-search-scope">资料范围
+                <select id="knowledge-search-scope" name="scope">
+                  <option value="books">电子书</option><option value="materials">馆规与服务</option>
+                </select>
+              </label>
+              <label for="knowledge-search-role">查看身份
+                <select id="knowledge-search-role" name="role">
+                  <option value="reader">读者</option><option value="staff">馆员</option>
+                </select>
+              </label>
+              <button id="knowledge-search-submit" type="submit">运行检索</button>
+            </div>
+          </form>
+          <p id="knowledge-search-status" class="field-note" role="status"></p>
+          <div id="knowledge-search-results" class="knowledge-excerpts"></div>
+        </section>
+        <dialog id="knowledge-preview" aria-labelledby="knowledge-preview-title">
+          <header class="section-heading">
+            <h3 id="knowledge-preview-title"></h3>
+            <form method="dialog"><button class="secondary" type="submit">关闭</button></form>
+          </header>
+          <p id="knowledge-preview-status" class="field-note" role="status"></p>
+          <div id="knowledge-preview-items" class="knowledge-excerpts"></div>
+          <button id="knowledge-preview-more" class="secondary" type="button" hidden>加载更多片段</button>
+        </dialog>
+      </section>
+      <section id="agent-view" class="agent-settings" aria-labelledby="agent-settings-title" hidden>
+        <section class="panel">
+          <h2 id="agent-settings-title" tabindex="-1">电子书检索 Agent</h2>
+          <p>设置本馆的书目和正文检索，以及生成答案时使用的指令。</p>
+          <form id="agent-form">
+            <label for="agent-answer-model">回答模型</label>
+            <select id="agent-answer-model" name="answer_model"></select>
+            <p class="field-note" id="agent-model-selection">只列出本馆已通过连接测试的模型。</p>
+            <fieldset>
+              <legend>检索范围</legend>
+              <label><input name="search_titles" type="checkbox"> 书目信息</label>
+              <label><input name="search_content" type="checkbox"> 正文</label>
+            </fieldset>
+            <label for="agent-limit">每次最多返回的证据数</label>
+            <input id="agent-limit" name="max_sources" type="number" min="1" max="12" required>
+            <label for="agent-prompt">回答 Prompt</label>
+            <textarea id="agent-prompt" name="prompt" rows="6" maxlength="4000" aria-describedby="agent-prompt-help" placeholder="例如：先给出结论，再用简短要点说明，并保留关键数字。"></textarea>
+            <p id="agent-prompt-help">留空使用默认指令。新任务在调用已绑定模型时读取此配置。</p>
+            <details>
+              <summary>查看默认指令</summary>
+              <pre id="agent-default-prompt"></pre>
+            </details>
+            <button id="agent-save" type="submit" disabled>保存设置</button>
+          </form>
+          <p id="agent-status" role="status"></p>
+        </section>
+        <aside class="panel">
+          <h2>模型管理</h2>
+          <p id="agent-model-mode" role="status">正在读取运行模式…</p>
+          <p>添加供应商模型并测试连接后，回到这里选择本馆的回答模型。</p>
+          <button id="open-models" type="button" class="secondary">打开设置中的模型管理 <span aria-hidden="true">↗</span></button>
+        </aside>
+      </section>
+      <section id="models-view" class="account-workspace" aria-labelledby="models-title" hidden>
+        <div class="model-page-heading">
+          <div><h2 id="models-title" tabindex="-1">模型管理</h2><p>配置供应商凭据、添加模型并验证连接。</p></div>
+          <button id="go-agent-model" type="button" class="secondary">配置 Agent 回答模型 <span aria-hidden="true">↗</span></button>
+        </div>
+        <div class="model-workspace">
+          <aside class="provider-picker" aria-label="模型供应商">
+            <label for="provider-search">供应商</label>
+            <input id="provider-search" type="search" placeholder="搜索供应商">
+            <nav id="model-providers" aria-label="选择供应商"></nav>
+          </aside>
+          <div class="model-main">
+            <section class="provider-heading" aria-labelledby="current-provider">
+              <div class="provider-heading-row">
+                <div class="provider-identity">
+                  <span id="provider-mark" class="provider-mark" aria-hidden="true"></span>
+                  <div>
+                    <h3 id="current-provider">选择供应商</h3>
+                    <p id="provider-key-state"></p>
+                  </div>
+                </div>
+                <div class="provider-actions">
+                  <button id="toggle-provider-credentials" type="button" class="secondary"
+                          aria-controls="provider-credentials" aria-expanded="false" disabled>配置凭据</button>
+                  <button id="discover-models" type="button" class="secondary" disabled>获取模型列表</button>
+                </div>
+              </div>
+              <form id="provider-credentials" hidden>
+                <label for="model-api-key">供应商 API Key</label>
+                <div class="provider-key-row">
+                  <input id="model-api-key" type="password" autocomplete="off" maxlength="4096" placeholder="仅首次配置或更换时填写" required>
+                  <button id="save-provider-key" type="submit">保存凭据</button>
+                </div>
+              </form>
+              <p id="models-status" role="status"></p>
+            </section>
+            <section class="model-library" aria-label="模型目录">
+              <nav class="model-tabs" aria-label="模型列表视图">
+                <button id="tab-model-catalog" type="button" aria-pressed="true" aria-controls="model-catalog-pane">可添加 <span id="model-catalog-count"></span></button>
+                <button id="tab-model-added" type="button" aria-pressed="false" aria-controls="model-added-pane">已添加 <span id="model-added-count"></span></button>
+              </nav>
+              <div id="model-catalog-pane">
+                <div class="model-catalog-tools">
+                  <input id="model-search" type="search" aria-label="搜索模型" placeholder="搜索模型名称或 ID">
+                  <select id="model-filter" aria-label="筛选模型类型">
+                    <option value="all">全部类型</option><option value="chat">对话</option><option value="embedding">向量嵌入</option>
+                  </select>
+                  <button id="add-selected-models" type="button" disabled>添加所选模型</button>
+                </div>
+                <div id="model-catalog"></div>
+              </div>
+              <div id="model-added-pane" hidden>
+                <p id="model-list-empty" class="model-empty" hidden>当前供应商还没有已添加的模型。</p>
+                <div id="model-list-table" class="accounts-table-wrap" hidden>
+                  <table class="accounts-table model-table" aria-label="已添加模型">
+                    <thead><tr><th scope="col">模型</th><th scope="col">类型</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+                    <tbody id="model-rows"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+      <section id="accounts-view" class="account-workspace" aria-labelledby="accounts-title" hidden>
+        <div class="account-page-heading">
+          <div><h2 id="accounts-title" tabindex="-1">账号管理</h2><p id="accounts-scope"></p></div>
+          <button id="add-account" type="button">新增账号</button>
+        </div>
+        <div class="panel">
+          <p id="accounts-status" role="status"></p>
+          <div class="list-toolbar">
+            <input id="account-search" type="search" aria-label="搜索手机号" placeholder="搜索手机号">
+            <select id="account-filter-role" aria-label="按角色筛选">
+              <option value="">全部角色</option><option value="reader">读者</option><option value="staff">管理员</option>
+            </select>
+            <select id="account-filter-state" aria-label="按账号状态筛选">
+              <option value="">全部状态</option><option value="true">启用</option><option value="false">停用</option>
+            </select>
+          </div>
+          <div class="accounts-table-wrap">
+            <table class="accounts-table" aria-label="本馆账号">
+              <thead><tr><th scope="col">手机号</th><th scope="col">角色</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead>
+              <tbody id="account-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <dialog id="account-dialog" aria-labelledby="account-dialog-title">
+          <div class="account-page-heading">
+            <h3 id="account-dialog-title">新增账号</h3>
+            <button id="close-account-dialog" class="text-button" type="button">关闭</button>
+          </div>
+          <form id="account-form">
+            <label for="account-phone">登录手机号</label>
+            <input id="account-phone" type="tel" autocomplete="off" inputmode="numeric" maxlength="11" pattern="1[3-9][0-9]{9}" required>
+            <label for="account-role">角色</label>
+            <select id="account-role"><option value="reader">读者</option><option value="staff">管理员</option></select>
+            <div id="account-active-field" hidden>
+              <label for="account-active">账号状态</label>
+              <select id="account-active"><option value="true">启用</option><option value="false">停用</option></select>
+              <p>变更角色或状态后，该账号需重新登录。</p>
+            </div>
+            <p id="account-form-message" role="alert"></p>
+            <button id="save-account" type="submit">保存账号</button>
+          </form>
+        </dialog>
+      </section>
+      <section id="portal-view" aria-labelledby="portal-settings-title" hidden>
+        <div class="admin-page-heading"><div><h2 id="portal-settings-title" tabindex="-1">门户与账号设置</h2><p>配置本馆首页、外部公告和读者登录规则。</p></div></div>
+        <form id="portal-admin-form" class="panel portal-admin-form">
+          <label for="portal-edit-title">首页标题</label><input id="portal-edit-title" name="title" maxlength="80" required>
+          <label for="portal-edit-intro">首页介绍</label><textarea id="portal-edit-intro" name="intro" maxlength="240" required></textarea>
+          <fieldset><legend>首页快捷服务</legend>
+            <label class="inline-check"><input name="shortcuts" type="checkbox" value="ask-library"> 智能问答</label>
+            <label class="inline-check"><input name="shortcuts" type="checkbox" value="reader-catalog"> 图书查询</label>
+            <label class="inline-check"><input name="shortcuts" type="checkbox" value="borrow-guide"> 借阅指南</label>
+            <label class="inline-check"><input name="shortcuts" type="checkbox" value="community-services"> 社区活动</label>
+          </fieldset>
+          <label for="portal-notice-feed">外部公告来源</label>
+          <select id="portal-notice-feed" name="notice_feed"></select>
+          <p id="portal-feed-note" class="field-note">列表由部署方为本馆配置。</p>
+          <label class="inline-check"><input name="external_notices" type="checkbox"> 使用部署时配置的外部公告源</label>
+          <label class="inline-check"><input name="registration_enabled" type="checkbox"> 允许新读者自助注册</label>
+          <label class="inline-check"><input name="otp_login_enabled" type="checkbox"> 允许本馆读者用手机验证码登录</label>
+          <button id="portal-save" type="submit">保存设置</button>
+          <p id="portal-settings-status" role="status"></p>
+        </form>
+      </section>
+      <section id="help-view" aria-labelledby="help-title" hidden>
+        <div class="admin-page-heading"><div><h2 id="help-title" tabindex="-1">人工问答</h2><p>处理读者主动转来的本馆问题。</p></div>
+          <button id="refresh-help" type="button" class="secondary">刷新</button></div>
+        <div id="help-inbox" class="panel" aria-live="polite"></div>
+      </section>
+      <section id="community-view" aria-labelledby="community-title" hidden>
+        <div class="admin-page-heading">
+          <div><h2 id="community-title" tabindex="-1">内容发布</h2><p>维护本馆公告、活动、借阅指南、常见问题和馆员手册。</p></div>
+          <button id="add-community-post" type="button">新建发布内容</button>
+        </div>
+        <p id="community-action-status" role="status"></p>
+        <section class="panel" aria-label="发布内容列表">
+          <div class="list-toolbar">
+            <input id="community-search" type="search" aria-label="搜索标题" placeholder="搜索标题">
+            <select id="community-kind-filter" aria-label="内容类型">
+              <option value="">全部类型</option><option value="notice">通知公告</option><option value="activity">社区活动</option><option value="guide">借阅指南</option><option value="faq">常见问题</option><option value="handbook">馆员手册</option>
+            </select>
+            <select id="community-state-filter" aria-label="发布状态">
+              <option value="">全部状态</option><option value="draft">草稿</option><option value="published">已发布</option><option value="withdrawn">已撤回</option>
+            </select>
+          </div>
+          <p id="community-list-status" role="status"></p>
+          <div class="accounts-table-wrap">
+            <table class="accounts-table" aria-label="公告与活动">
+              <thead><tr><th scope="col">标题</th><th scope="col">类型</th><th scope="col">状态</th><th scope="col">最近更新</th><th scope="col">操作</th></tr></thead>
+              <tbody id="community-rows"></tbody>
+            </table>
+          </div>
+        </section>
+        <dialog id="community-dialog" aria-labelledby="community-dialog-title">
+          <form id="community-form">
+            <h3 id="community-dialog-title">新建发布内容</h3>
+            <label for="community-kind">类型</label>
+            <select id="community-kind" name="kind">
+              <option value="notice">通知公告</option><option value="activity">社区活动</option><option value="guide">借阅指南</option><option value="faq">常见问题</option><option value="handbook">馆员手册</option>
+            </select>
+            <label for="community-post-title">标题</label>
+            <input id="community-post-title" name="title" maxlength="120" required>
+            <label for="community-post-body">正文</label>
+            <textarea id="community-post-body" name="body" rows="8" maxlength="5000" required></textarea>
+            <div class="editor-fields">
+              <label>排序<input name="sort_order" type="number" min="0" max="9999" value="0" required></label>
+              <label>问答关键词<input name="keywords" maxlength="1464" placeholder="以逗号分隔，例如 续借, renewal"></label>
+            </div>
+            <label id="community-featured-group" class="inline-check" hidden><input type="checkbox" name="featured"> 推荐到首页与问答页</label>
+            <fieldset id="community-activity-fields" hidden>
+              <legend>活动信息</legend>
+              <label>开始时间<input name="starts_at" type="datetime-local"></label>
+              <label>地点<input name="location" maxlength="160"></label>
+              <label>报名名额<input name="capacity" type="number" min="1" max="10000" placeholder="留空时仅发布通知"></label>
+            </fieldset>
+            <p id="community-form-error" class="error" role="alert" hidden></p>
+            <div class="dialog-actions">
+              <button type="button" id="cancel-community-post" class="secondary">取消</button>
+              <button type="submit" id="save-community-post">保存草稿</button>
+            </div>
+          </form>
+        </dialog>
+        <dialog id="roster-dialog" aria-labelledby="roster-title">
+          <h3 id="roster-title">报名名单</h3><div id="roster-list" aria-live="polite"></div>
+          <form method="dialog"><button type="submit" class="secondary">关闭</button></form>
+        </dialog>
+        <dialog id="community-state-dialog" aria-labelledby="community-state-title">
+          <h3 id="community-state-title"></h3>
+          <p id="community-state-note"></p>
+          <p id="community-state-error" class="error" role="alert" hidden></p>
+          <div class="dialog-actions">
+            <button type="button" id="cancel-community-state" class="secondary">取消</button>
+            <button type="button" id="save-community-state"></button>
+          </div>
+        </dialog>
+      </section>
+      <section id="management-view" aria-labelledby="management-title" hidden>
+        <div class="account-page-heading">
+          <div><h2 id="management-title" tabindex="-1">馆藏管理</h2><p>新增、编辑和删除图书，管理电子版和发布范围。</p></div>
+          <button id="add-book" type="button">新增图书</button>
+        </div>
+        <p id="book-action-notice" role="status"></p>
+        <section id="book-list" class="panel">
+          <div class="list-toolbar">
+            <input id="book-search" type="search" aria-label="搜索馆藏" placeholder="搜索书名、作者或 ISBN">
+            <select id="book-filter" aria-label="按文件状态筛选">
+              <option value="">在馆图书</option><option value="archived">已删除</option><option value="empty">未上传</option><option value="processing">处理中</option>
+              <option value="ready">待发布</option><option value="published">已发布</option><option value="failed">解析失败</option>
+            </select>
+            <select id="admin-category" aria-label="图书分类"><option value="">全部分类</option></select>
+            <select id="book-audience-filter" aria-label="按可见范围筛选">
+              <option value="">全部可见范围</option><option value="reader">本馆读者和馆员</option><option value="staff">仅本馆馆员</option>
+            </select>
+          </div>
+          <p id="book-list-status" role="status"></p>
+          <div class="accounts-table-wrap">
+            <table class="accounts-table" aria-label="馆藏">
+              <thead><tr><th scope="col">图书</th><th scope="col">可见范围</th><th scope="col">文件状态</th><th scope="col">操作</th></tr></thead>
+              <tbody id="book-rows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="book-detail" class="panel" aria-labelledby="book-detail-title" hidden>
+          <div class="account-page-heading">
+            <div><h3 id="book-detail-title" tabindex="-1"></h3><p id="book-detail-meta"></p></div>
+            <div class="book-actions">
+              <button id="edit-selected-book" type="button" class="secondary">编辑信息</button>
+              <button id="archive-selected-book" type="button" class="secondary">删除图书</button>
+              <button id="back-to-books" type="button" class="secondary">返回列表</button>
+            </div>
+          </div>
+          <p id="book-archive-note" class="field-note" hidden>此图书已删除。恢复后将重新按原可见范围显示。</p>
+          <input id="managed-book" type="hidden">
+          <form id="upload-form" hidden>
+            <label for="book-file">电子书文件</label>
+            <input id="book-file" name="file" type="file" accept=".pdf,.epub,.docx,.md,.markdown,.txt" aria-describedby="book-index-help" required>
+            <p id="book-index-help" class="field-note">上传后会解析正文。审核发布后，当前版本才会进入本馆问答的检索范围。</p>
+            <button id="upload-submit" type="submit">上传电子书</button>
+          </form>
+          <p id="upload-status" role="status"></p>
+          <div id="versions"></div>
+        </section>
+        <dialog id="book-dialog" aria-labelledby="book-dialog-title">
+          <div class="account-page-heading">
+            <h3 id="book-dialog-title">登记新书</h3>
+            <button id="close-book-dialog" type="button" class="text-button">关闭</button>
+          </div>
+          <form id="book-form">
+            <label for="book-title">书名</label>
+            <input id="book-title" name="title" maxlength="240" required>
+            <label for="book-author">作者</label>
+            <input id="book-author" name="author" maxlength="240">
+            <label for="book-isbn">ISBN</label>
+            <input id="book-isbn" name="isbn" pattern="[0-9]{9}[0-9X]|[0-9]{13}" placeholder="10 或 13 位">
+            <label for="book-shelf">馆藏位置</label>
+            <input id="book-shelf" name="shelf" maxlength="100">
+            <label for="book-category">分类</label><input id="book-category" name="category" maxlength="60">
+            <label for="book-audience">可见范围</label>
+            <select id="book-audience" name="audience">
+              <option value="reader">本馆读者和馆员</option>
+              <option value="staff">仅本馆馆员</option>
+            </select>
+            <button id="book-submit" type="submit">登记图书</button>
+            <p id="book-status" role="status"></p>
+          </form>
+        </dialog>
+        <dialog id="book-archive-dialog" aria-labelledby="book-archive-title">
+          <div class="account-page-heading">
+            <h3 id="book-archive-title"></h3>
+            <button id="cancel-book-archive" class="text-button" type="button">取消</button>
+          </div>
+          <p id="book-archive-description"></p>
+          <p id="book-archive-status" role="alert"></p>
+          <button id="confirm-book-archive" type="button"></button>
+        </dialog>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

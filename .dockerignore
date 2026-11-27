@@ -1,0 +1,9 @@
+.git
+.venv
+.env
+.kb-data
+__pycache__
+.pytest_cache
+prototype/*.js
+prototype/index.html
+tests
