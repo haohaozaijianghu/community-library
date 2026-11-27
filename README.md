@@ -152,6 +152,18 @@ python3 scripts/check_demo_books.py
 
 两种场景均验证单次收据读取、原任务 ID、答案、引用以及再次重启后的不变性。故障点在 [Worker 的成功响应分支](library/worker.py)，数据库事务边界在同文件的 `step` 以及 [API 提交实现](library/api.py)。本地兼容协议测试已通过模型注册、验证、按馆绑定、授权证据和 Token 回传。模型管理的独立联调见 [check_model_management.py](scripts/check_model_management.py)。
 
+## Kubernetes 发布验证
+
+[Verify 工作流](.github/workflows/verify.yml) 在 GitHub Actions 中运行两组检查。Compose 作业执行单元测试和核心集成测试。Kubernetes 作业构建以提交 SHA 标记的镜像，使用临时 kind 集群验证发布与回滚。
+
+本地安装 Docker、kind、kubectl、Python 3 和 jq 后，运行以下命令。
+
+```sh
+bash scripts/check_kubernetes.sh
+```
+
+脚本验证 API 与 Worker 部署、`locker` 问答、Pod 重建后查询原任务，以及候选版就绪失败后的回滚。候选版沿用相同应用镜像，通过错误的就绪探针触发失败。回滚后检查镜像版本、原任务和新任务。脚本用临时 kubeconfig、随机数据库密码和 mock 模型，结束时删除临时集群。[kind 测试清单](deploy/kind/library.yaml) 使用单节点卷与演示身份。生产发布与监测见 [设计说明](docs/assignment-design.md)。
+
 ## Prompt 修订
 
 默认系统提示词可在 [prompt/](prompt/) 中与验证样例一起查看。更新根目录 [prompt.md](prompt.md) 后，同步 [目录中的副本](prompt/system-prompt.md)。
