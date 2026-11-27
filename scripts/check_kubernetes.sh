@@ -9,6 +9,7 @@ app="community-library-app:$(git rev-parse --short=12 HEAD)"
 candidate="community-library-app:$(git rev-parse --short=12 HEAD)-candidate"
 mock="community-library-mock:$(git rev-parse --short=12 HEAD)"
 port_forward=
+registry_mode=0
 
 cleanup() {
     status=$?
@@ -26,11 +27,40 @@ cleanup() {
 }
 trap cleanup EXIT
 
-docker build -t "$app" .
-docker tag "$app" "$candidate"
-docker build -t "$mock" mock
+if [[ -n "${RELEASE_APP_IMAGE:-}" ]]; then
+    registry_mode=1
+    app=$RELEASE_APP_IMAGE
+    candidate=${RELEASE_CANDIDATE_IMAGE:?}
+    mock=${RELEASE_MOCK_IMAGE:?}
+    for image in "$app" "$candidate" "$mock"; do
+        [[ "$image" =~ ^ghcr[.]io/[^@]+@sha256:[a-f0-9]{64}$ ]] || {
+            echo "Expected a GHCR digest reference: $image" >&2
+            exit 1
+        }
+    done
+    [[ "$app" != "$candidate" ]]
+else
+    docker build -t "$app" .
+    docker tag "$app" "$candidate"
+    docker build -t "$mock" mock
+fi
 kind create cluster --name "$cluster" --wait 120s
-kind load docker-image --name "$cluster" "$app" "$candidate" "$mock"
+if (( registry_mode )); then
+    python3 - > "$temp_dir/registry.json" <<'PYREG'
+import base64
+import json
+import os
+
+credentials = f"{os.environ['GHCR_USERNAME']}:{os.environ['GHCR_TOKEN']}"
+print(json.dumps({"auths": {"ghcr.io": {"auth": base64.b64encode(credentials.encode()).decode()}}}))
+PYREG
+    kubectl create secret generic ghcr-pull --type=kubernetes.io/dockerconfigjson \
+        --from-file=.dockerconfigjson="$temp_dir/registry.json"
+    rm "$temp_dir/registry.json"
+    kubectl patch serviceaccount default -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}'
+else
+    kind load docker-image --name "$cluster" "$app" "$candidate" "$mock"
+fi
 
 db_password=$(python3 -c 'import secrets; print(secrets.token_hex(24))')
 model_key=$(python3 -c 'import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())')
@@ -47,6 +77,11 @@ sed -e "s|community-library-app:local|$app|g" -e "s|community-library-mock:local
 for deployment in db mock api worker; do
     kubectl rollout status "deployment/$deployment" --timeout=180s
 done
+if (( registry_mode )); then
+    echo "GHCR images pulled by a fresh cluster:"
+    kubectl get pods -l 'app in (api,worker,mock)' \
+        -o 'custom-columns=POD:.metadata.name,IMAGE:.spec.containers[0].image,RESOLVED:.status.containerStatuses[0].imageID'
+fi
 
 open_api() {
     if [[ -n "$port_forward" ]]; then

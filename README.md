@@ -164,6 +164,10 @@ bash scripts/check_kubernetes.sh
 
 脚本验证 API 与 Worker 部署、`locker` 问答、Pod 重建后查询原任务，以及候选版就绪失败后的回滚。候选版沿用相同应用镜像，通过错误的就绪探针触发失败。回滚后检查镜像版本、原任务和新任务。脚本用临时 kubeconfig、随机数据库密码和 mock 模型，结束时删除临时集群。[kind 测试清单](deploy/kind/library.yaml) 使用单节点卷与演示身份。生产发布与监测见 [设计说明](docs/assignment-design.md)。
 
+### GHCR 发布演练
+
+在 GitHub Actions 手动运行 [Release verification](.github/workflows/release-verify.yml)。发布作业将应用、模拟模型及故障演练用候选镜像以提交 SHA 标签推到 GHCR，并记录推送后的镜像摘要。后续作业在新建的 kind 集群内直接按摘要拉取镜像，复用上面的问答、重建和回滚检查。验收时核对两个作业均成功、镜像摘要与集群拉取记录一致，以及回滚后的旧任务和新任务均通过。该演练使用 mock 与虚构资料。
+
 ## Prompt 修订
 
 默认系统提示词可在 [prompt/](prompt/) 中与验证样例一起查看。更新根目录 [prompt.md](prompt.md) 后，同步 [目录中的副本](prompt/system-prompt.md)。

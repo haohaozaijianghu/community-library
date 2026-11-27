@@ -1,0 +1,77 @@
+name: Release verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      app: ${{ steps.release.outputs.app }}
+      candidate: ${{ steps.release.outputs.candidate }}
+      mock: ${{ steps.release.outputs.mock }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Publish SHA-tagged images to GHCR
+        id: release
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          export DOCKER_CONFIG
+          DOCKER_CONFIG=$(mktemp -d)
+          trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          registry_repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          publish() {
+            local key="$1" repo="$2" tag="$3" context="$4"
+            shift 4
+            docker build --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+              --label "org.opencontainers.image.revision=$GITHUB_SHA" "$@" -t "$repo:$tag" "$context"
+            docker push "$repo:$tag"
+            ref=$(docker image inspect "$repo:$tag" --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+              awk -v prefix="$repo@sha256:" 'index($0, prefix)==1 {print; exit}')
+            [[ "$ref" =~ @sha256:[a-f0-9]{64}$ ]]
+            printf '%s=%s\n' "$key" "$ref" >> "$GITHUB_OUTPUT"
+            echo "$key $ref" >> "$GITHUB_STEP_SUMMARY"
+          }
+          publish app "$registry_repo" "$GITHUB_SHA" .
+          publish mock "$registry_repo-mock" "$GITHUB_SHA" mock
+          publish candidate "$registry_repo" "$GITHUB_SHA-candidate" . \
+            --label org.opencontainers.image.description="Candidate image for the rollout failure drill"
+
+  staging:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - run: |
+          GOBIN="$RUNNER_TEMP/bin" go install sigs.k8s.io/kind@v0.33.0
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Deploy registry digests and verify rollback
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_APP_IMAGE: ${{ needs.publish.outputs.app }}
+          RELEASE_CANDIDATE_IMAGE: ${{ needs.publish.outputs.candidate }}
+          RELEASE_MOCK_IMAGE: ${{ needs.publish.outputs.mock }}
+        run: bash scripts/check_kubernetes.sh
