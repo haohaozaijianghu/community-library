@@ -20,11 +20,14 @@ def compose(*args, **env):
     ).strip()
 
 
-def req(path, user="north-reader", payload=None, key=None, status=200, method=None, form=False):
+def req(path, user="north-reader", payload=None, key=None, status=200, method=None, form=False, *, raw=None):
     headers = {"Authorization": f"Bearer demo-{user}"} if user else {}
     if key:
         headers["Idempotency-Key"] = key
-    if payload is not None:
+    if raw is not None:
+        headers["Content-Type"] = "application/json"
+        payload = raw
+    elif payload is not None:
         headers["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
         payload = (urlencode(payload) if form else json.dumps(payload)).encode()
     request = Request(BASE + path, data=payload, headers=headers, method=method)
@@ -174,6 +177,16 @@ def run():
     req("/healthz", None)
     req("/v1/jobs", None, {"query": "locker"}, "denied", 401)
     req("/v1/jobs", "north-reader", {"query": ""}, "bad", 400)
+
+    for path in ("/v1/jobs", "/v1/agent/jobs"):
+        for body in (b"{", b'{"query":"\xff"}'):
+            assert req(path, None, key="denied", status=401, raw=body) == {
+                "detail": "invalid_credentials",
+            }
+            assert req(path, "unknown-user", key="denied", status=401, raw=body) == {
+                "detail": "invalid_credentials",
+            }
+            req(path, key="invalid-json", status=400, raw=body)
 
     for unknown in (uuid4().hex, "%00"):
         assert req(f"/v1/jobs/{unknown}", status=404) == {"detail": "job_not_found"}

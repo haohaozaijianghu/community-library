@@ -5,9 +5,11 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, StrictBool, StrictStr, field_validator
@@ -31,6 +33,9 @@ bearer = HTTPBearer(auto_error=False)
 
 
 def identity(request: Request, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]):
+    submitter = getattr(request.state, "authenticated_submitter", None)
+    if submitter is not None:
+        return submitter
     if request.headers.get("Authorization") is None:
         user = session_user(request)
     else:
@@ -49,6 +54,21 @@ def identity(request: Request, credentials: Annotated[HTTPAuthorizationCredentia
 
 
 User = Annotated[dict, Depends(identity)]
+
+
+class SubmissionRoute(APIRoute):
+    def get_route_handler(self):
+        handle_submission = super().get_route_handler()
+
+        async def authenticate_before_body(request: Request):
+            credentials = await bearer(request)
+            request.state.authenticated_submitter = await run_in_threadpool(identity, request, credentials)
+            return await handle_submission(request)
+
+        return authenticate_before_body
+
+
+submission_router = APIRouter(route_class=SubmissionRoute)
 
 
 class Submission(BaseModel):
@@ -142,7 +162,7 @@ def health(request: Request):
     return {"status": "ok"}
 
 
-@app.post("/v1/jobs", status_code=202)
+@submission_router.post("/v1/jobs", status_code=202)
 def submit(
     request: Request, user: User, body: Submission,
     idempotency_key: Annotated[str | None, Header()] = None,
@@ -150,7 +170,7 @@ def submit(
     return enqueue(request, user, body, idempotency_key, "library")
 
 
-@app.post("/v1/agent/jobs", status_code=202)
+@submission_router.post("/v1/agent/jobs", status_code=202)
 def submit_agent(
     request: Request, user: User, body: Submission,
     idempotency_key: Annotated[str | None, Header()] = None,
@@ -158,6 +178,9 @@ def submit_agent(
     if body.web_search:
         raise HTTPException(400, "agent_uses_published_books")
     return enqueue(request, user, body, idempotency_key, "books")
+
+
+app.include_router(submission_router)
 
 
 def enqueue(request, user, body, idempotency_key, source_mode):
