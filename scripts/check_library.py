@@ -175,6 +175,12 @@ def run():
     req("/v1/jobs", None, {"query": "locker"}, "denied", 401)
     req("/v1/jobs", "north-reader", {"query": ""}, "bad", 400)
 
+    for unknown in (uuid4().hex, "%00"):
+        assert req(f"/v1/jobs/{unknown}", status=404) == {"detail": "job_not_found"}
+        assert req(f"/v1/jobs/{unknown}/citations/north-locker-guide", status=404) == {
+            "detail": "citation_not_found",
+        }
+
     check_account_isolation()
     empty = submit("zzz-no-match")
     no_match = terminal(empty)

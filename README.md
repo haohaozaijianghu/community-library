@@ -22,6 +22,8 @@ curl -fsS http://127.0.0.1:8080/v1/jobs/JOB_ID \
   -H 'Authorization: Bearer demo-north-reader'
 ```
 
+提交成功返回 HTTP `202` 和 `job_id`。用这个 ID 每隔约一秒查询一次。`queued` 和 `running` 表示仍在处理中，此时 `result` 为 `null`。`succeeded` 后读取答案、引用和用量。若收到 `failed`，查看 `error_code` 并停止轮询。正常的单任务测试应在 15 秒内完成。
+
 ### Compose 启动时装载题包数据
 
 API 启动迁移完成后，在同一数据库事务内导入 `fixtures/demo.json` 的身份和资料。Compose 将 `fixtures/` 只读挂载到 API。调整本地 fixture 后，运行 `docker compose restart api`，等 `/healthz` 就绪即可使用更新后的数据。
@@ -150,7 +152,14 @@ python3 scripts/check_demo_books.py
 | 主模型正常 | Worker 退出 73，任务 running | 1 | 200 |
 | 主模型限流 | Worker 退出 73，任务 running | 3 | 450 |
 
-两种场景均验证单次收据读取、原任务 ID、答案、引用以及再次重启后的不变性。故障点在 [Worker 的成功响应分支](library/worker.py)，数据库事务边界在同文件的 `step` 以及 [API 提交实现](library/api.py)。本地兼容协议测试已通过模型注册、验证、按馆绑定、授权证据和 Token 回传。模型管理的独立联调见 [check_model_management.py](scripts/check_model_management.py)。
+两种场景均验证单次收据读取、原任务 ID、答案、引用以及再次重启后的不变性。故障点在 [Worker 的成功响应分支](library/worker.py)，数据库事务边界在同文件的 `step` 以及 [API 提交实现](library/api.py)。
+
+在上面新建的测试项目里，可以用 [模型管理联调脚本](scripts/check_model_management.py) 验证模型发现、注册、验证、按馆绑定和引用。脚本会在 mock 容器内启动一个兼容 API，使用虚构凭据。
+
+```sh
+LIBRARY_CUSTOM_MODEL_URL=http://mock:8098 docker compose up -d --wait api worker
+python3 scripts/check_model_management.py
+```
 
 ## Kubernetes 发布验证
 

@@ -322,6 +322,9 @@ def question_diagnostics(request: Request, job_id: str, user: User):
 
 @app.get("/v1/jobs/{job_id}")
 def get_job(request: Request, job_id: str, user: User):
+    if "\x00" in job_id:
+        event("access_denied", reason="job_not_visible")
+        raise HTTPException(404, "job_not_found")
     with request.app.state.db.connection() as conn:
         job = conn.execute(
             """SELECT id AS job_id, status, result, error_code FROM library_jobs
@@ -338,6 +341,9 @@ def get_job(request: Request, job_id: str, user: User):
 
 @app.get("/v1/jobs/{job_id}/citations/{citation_id}")
 def cited_evidence(request: Request, job_id: str, citation_id: str, user: User):
+    if "\x00" in job_id:
+        event("access_denied", reason="citation_not_visible")
+        raise HTTPException(404, "citation_not_found")
     with request.app.state.db.connection() as conn:
         job = conn.execute(
             """SELECT evidence,result FROM library_jobs
