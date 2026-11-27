@@ -26,6 +26,8 @@ curl -fsS http://127.0.0.1:8080/v1/jobs/JOB_ID \
 
 提交成功返回 HTTP `202` 和 `job_id`。用这个 ID 每隔约一秒查询一次。`queued` 和 `running` 表示仍在处理中，此时 `result` 为 `null`。`succeeded` 后读取答案、引用和用量。若收到 `failed`，查看 `error_code` 并停止轮询。正常的单任务测试应在 15 秒内完成。
 
+每次验证新任务时，把示例中的 `locker-demo` 换成一个未使用的 `Idempotency-Key`。验证幂等或重试同一个提交时保留原键。同一账号用同一个键提交同一个问题会得到原任务 ID。
+
 ### Compose 启动时装载题包数据
 
 API 启动迁移完成后，在同一数据库事务内导入 `fixtures/demo.json` 的身份和资料。Compose 将 `fixtures/` 只读挂载到 API。调整本地 fixture 后，运行 `docker compose restart api`，等 `/healthz` 就绪即可使用更新后的数据。
@@ -154,18 +156,24 @@ A 馆对应题包北馆（`north`），B 馆对应南馆（`south`）。演示�
 
 本地单元测试使用 Python 3.12，先在虚拟环境中执行 `python -m pip install --require-hashes -r requirements.lock` 和 `python -m pip install pytest`，再执行 `python -m pytest -q`。
 
-用一个干净的测试项目，避免改变演示实例的 mock 模式：
+每次运行下面的代码块都会新建独立的 Compose 验收项目，从空卷开始。测试占用本机 18080 和 18091 端口。完成后只清理本次验收项目的容器和数据卷。
 
 ```sh
-export COMPOSE_PROJECT_NAME=community-library-test LIBRARY_HTTP_PORT=18080 LIBRARY_MOCK_PORT=18091
-export LIBRARY_SEED_DEMO_BOOKS=0
-docker compose up -d --build --wait
-python3 scripts/check_accounts.py
-python3 scripts/check_library.py
-python3 scripts/check_agent.py
-python3 scripts/check_community.py
-python3 scripts/check_portal_workflows.py
-python3 scripts/check_demo_books.py
+(
+  set -eu
+  export COMPOSE_PROJECT_NAME="community-library-test-$(date +%s)-$$"
+  export LIBRARY_HTTP_PORT=18080 LIBRARY_MOCK_PORT=18091 LIBRARY_SEED_DEMO_BOOKS=0
+  export TEST_API_URL=http://127.0.0.1:18080 TEST_MOCK_URL=http://127.0.0.1:18091
+  trap 'docker compose down --volumes' EXIT
+  printf '验收项目 %s\n' "$COMPOSE_PROJECT_NAME"
+  docker compose up -d --build --wait
+  python3 scripts/check_accounts.py
+  python3 scripts/check_library.py
+  python3 scripts/check_agent.py
+  python3 scripts/check_community.py
+  python3 scripts/check_portal_workflows.py
+  python3 scripts/check_demo_books.py
+)
 ```
 
 脚本覆盖馆别与角色隔离、并发幂等、无匹配、文件审核发布、基础重启、降级和高阶恢复，也验证公告发布与撤回、活动并发报名、人工问答、账号设置和示例书重复导入。基础重启先停止 Worker、提交任务并断言 mock 尚无调用，再重启 API 和启动 Worker。脚本也覆盖调用记录已提交、首次请求尚未发出时强制退出（退出码 74）。重启时先查收据，收到 404 后等待并复查，仍缺失才用同一尝试 ID 发送。正常主模型最终只生成一次，限流时仍遵守两次主模型加一次备用的规则。高阶恢复由同一脚本执行，使用 `LIBRARY_CRASH_AFTER_SUCCESS=1` 重建 Worker，确认退出码和任务未完成，然后关闭开关重建 Worker。全程保留数据库卷，高阶恢复期间也保留原 mock 进程。
@@ -192,10 +200,10 @@ python3 scripts/check_demo_books.py
 )
 ```
 
-测试运行期间可查看模型尝试、模型切换和拒绝访问事件。重建容器前查看对应容器的日志。
+测试运行期间，在另一个终端将 `TEST_PROJECT` 设为上面打印的验收项目名，即可查看模型尝试、模型切换和拒绝访问事件。重建容器前查看对应容器的日志。
 
 ```sh
-docker compose logs --no-log-prefix api worker | grep -E 'model_attempt|model_switch|access_denied'
+docker compose -p "$TEST_PROJECT" logs --no-log-prefix api worker | grep -E 'model_attempt|model_switch|access_denied'
 ```
 
 [已通过的常规验收记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45928918143)
@@ -230,7 +238,7 @@ bash scripts/check_kubernetes.sh
 python3 scripts/check_prompt.py
 ```
 
-脚本默认请求 `deepseek-flash`，生成相同的 14 个输入，自动核对 JSON 格式、状态和引用集合，并逐条打印实际答案和预期答案供核对事实。接口失败或断言不符时返回非零退出码。使用其他兼容供应商时可传 `--base-url` 和 `--model`。
+脚本默认请求 `deepseek-flash`，生成相同的 14 个输入，自动核对 JSON 格式、状态和引用集合，并逐条打印实际答案和预期答案供核对事实。接口失败或断言不符时返回非零退出码。使用其他兼容供应商时可传 `--base-url` 和 `--model`。远程地址须使用 HTTPS。本机测试允许通过 `localhost`、`127.0.0.1` 或 `::1` 使用 HTTP。
 
 [一页设计说明](docs/assignment-design.md)
 

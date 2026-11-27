@@ -42,11 +42,25 @@ def matches(result, expected):
     )
 
 
+def completion_endpoint(base_url):
+    url = httpx.URL(base_url)
+    if not url.host or url.userinfo or url.query or url.fragment:
+        raise ValueError("use a model base URL without credentials, query, or fragment")
+    loopback = url.host in {"localhost", "127.0.0.1", "::1"}
+    if url.scheme != "https" and not (url.scheme == "http" and loopback):
+        raise ValueError("remote model URLs must use HTTPS; HTTP is allowed only on loopback")
+    return url.copy_with(path=url.path.rstrip("/") + "/chat/completions")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="https://api.deepseek.com/v1")
     parser.add_argument("--model", default="deepseek-flash")
     args = parser.parse_args()
+    try:
+        endpoint = completion_endpoint(args.base_url)
+    except (ValueError, httpx.InvalidURL) as error:
+        parser.error(str(error))
     key = os.getenv("PROMPT_EVAL_API_KEY")
     if not key:
         parser.error("set PROMPT_EVAL_API_KEY in the environment")
@@ -54,14 +68,14 @@ def main():
     cases = json.loads((ROOT / "prompt" / "public_cases.json").read_text(encoding="utf-8"))
     cases.append(json.loads((ROOT / "prompt" / "mixed_case.json").read_text(encoding="utf-8")))
     passed = total = 0
-    with httpx.Client(timeout=15, follow_redirects=False) as client:
+    with httpx.Client(timeout=15, follow_redirects=False, trust_env=False) as client:
         for case in cases:
             for variant, data, expected in examples(case):
                 total += 1
                 row = {"case": case["id"], "variant": variant, "expected": expected}
                 try:
                     response = client.post(
-                        args.base_url.rstrip("/") + "/chat/completions",
+                        endpoint,
                         headers={"Authorization": "Bearer " + key},
                         json={
                             "model": args.model,
