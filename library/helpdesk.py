@@ -30,6 +30,8 @@ def routes(identity):
 
     @router.put("/v1/reader/help/{job_id}")
     def request_help(job_id: str, request: Request, user=Depends(reader)):
+        if "\x00" in job_id:
+            raise HTTPException(404, "job_not_visible")
         with request.app.state.db.connection() as conn:
             row = conn.execute(
                 """INSERT INTO library_help_requests (job_id,tenant_id,user_id)
@@ -48,6 +50,8 @@ def routes(identity):
 
     @router.get("/v1/reader/help/{job_id}")
     def read_help(job_id: str, request: Request, response: Response, user=Depends(reader)):
+        if "\x00" in job_id:
+            raise HTTPException(404, "job_not_visible")
         response.headers["Cache-Control"] = "no-store"
         with request.app.state.db.connection() as conn:
             return conn.execute(
@@ -69,6 +73,8 @@ def routes(identity):
 
     @router.post("/v1/admin/help/{job_id}/reply")
     def reply(job_id: str, body: Reply, request: Request, user=Depends(staff)):
+        if "\x00" in job_id:
+            raise HTTPException(404, "job_not_visible")
         with request.app.state.db.connection() as conn:
             row = conn.execute(
                 """UPDATE library_help_requests SET reply=%s,actor_id=%s,answered_at=now()

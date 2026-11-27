@@ -11,7 +11,7 @@ import httpx
 from library.core import event
 
 CATALOG_URL = "https://openlibrary.org/search.json"
-NOTICE_WORDS = ("公告", "闭馆", "开放时间", "notice", "closure", "opening hours")
+NOTICE_WORDS = ("公告", "闭馆", "开馆", "开放时间", "开门时间", "几点开门", "notice", "closure", "opening hours")
 MAX_RESPONSE = 512 * 1024
 
 
@@ -128,10 +128,14 @@ def reader_notices(tenant, feed=None):
         return {"state": "unavailable", "items": []}
 
 
+def is_notice_query(query):
+    return any(word in query.casefold() for word in NOTICE_WORDS)
+
+
 def public_evidence(job, *, notices_enabled=True, notice_feed=None):
     if os.getenv("LIBRARY_WEB_ENABLED") != "1":
         return []
-    is_notice = any(word in job["query"].casefold() for word in NOTICE_WORDS)
+    is_notice = is_notice_query(job["query"])
     if is_notice and not notices_enabled:
         return []
     source = "official_notice" if is_notice else "openlibrary"

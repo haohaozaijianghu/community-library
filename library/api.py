@@ -22,7 +22,7 @@ from library.core import ROOT, digest, event, pool
 from library.fixtures import sync_demo_data
 from library.helpdesk import routes as helpdesk_routes
 from library.model_connections import routes as model_routes
-from library.sources import reader_notices
+from library.sources import is_notice_query, reader_notices
 from library.portal import routes as portal_routes, settings as portal_settings
 from library.profile import router as profile_router
 from library.web_auth import router as auth_router, session_user
@@ -186,7 +186,9 @@ app.include_router(submission_router)
 def enqueue(request, user, body, idempotency_key, source_mode):
     if not idempotency_key or len(idempotency_key) > 128 or "\x00" in idempotency_key:
         raise HTTPException(400, "invalid_idempotency_key")
-    if body.web_search and not re.fullmatch(r"[\w .,:()'’&-]{1,100}", body.query):
+    if body.web_search and (len(body.query) > 100 or (
+        not is_notice_query(body.query) and not re.fullmatch(r"[\w .,:()'’&-]+", body.query)
+    )):
         raise HTTPException(400, "public_lookup_requires_catalog_terms")
     scope = (user["tenant_id"], user["user_id"], idempotency_key)
     job_id = uuid4().hex
@@ -265,6 +267,8 @@ def admin_overview(request: Request, user: User):
 
 @app.get("/v1/question-history")
 def question_history(request: Request, user: User, job_id: str | None = None):
+    if job_id is not None and "\x00" in job_id:
+        raise HTTPException(400, "invalid_request")
     with request.app.state.db.connection() as conn:
         return conn.execute(
             """SELECT id AS job_id,query,status,created_at,source_mode FROM library_jobs
@@ -277,6 +281,8 @@ def question_history(request: Request, user: User, job_id: str | None = None):
 
 @app.get("/v1/conversations")
 def conversations(request: Request, user: User, search: str = ""):
+    if "\x00" in search:
+        raise HTTPException(400, "invalid_request")
     with request.app.state.db.connection() as conn:
         return conn.execute(
             """SELECT root.id AS conversation_id,root.query,latest.id AS job_id,
@@ -324,6 +330,8 @@ def conversation_turns(request: Request, user: User, job_id: UUID):
 def question_diagnostics(request: Request, job_id: str, user: User):
     if user["role"] != "staff":
         raise HTTPException(403, "staff_required")
+    if "\x00" in job_id:
+        raise HTTPException(404, "job_not_found")
     with request.app.state.db.connection() as conn:
         job = conn.execute(
             """SELECT evidence FROM library_jobs

@@ -194,6 +194,19 @@ def run():
             "detail": "citation_not_found",
         }
 
+    req("/v1/question-history?job_id=%00", status=400)
+    req("/v1/conversations?search=%00", status=400)
+    req("/v1/agent/jobs/%00/diagnostics", "north-staff", status=404)
+    req("/v1/reader/help/%00", status=404)
+    req("/v1/reader/help/%00", status=404, method="PUT")
+    req("/v1/admin/help/%00/reply", "north-staff", {"reply": "test"}, status=404)
+
+    notice = req("/v1/jobs", payload={"query": "北馆开馆时间？", "web_search": True},
+                 key=uuid4().hex, status=202)["job_id"]
+    assert terminal(notice)["status"] == "succeeded"
+    assert req("/v1/jobs", payload={"query": "Pride and Prejudice？", "web_search": True},
+               key=uuid4().hex, status=400) == {"detail": "public_lookup_requires_catalog_terms"}
+
     check_account_isolation()
     empty = submit("zzz-no-match")
     no_match = terminal(empty)

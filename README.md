@@ -4,11 +4,13 @@
 
 ## 启动与试用
 
+需要 Docker Engine 或 Docker Desktop，以及 Docker Compose 2.30 或更新版本。
+
 ```sh
 docker compose up -d --build --wait
 ```
 
-在 `http://127.0.0.1:8080/` 登录。选择身份后，可以用用户名或已绑定的手机号加密码登录，也可以用手机验证码登录。新读者可以在首页选择北馆或南馆，验证手机号并创建账号。读者进入「找书与问答」，管理员进入馆藏后台并可配置本馆 Agent。登录后的角色和所属馆由服务端按账号记录确定。自行注册的账号统一为读者。交互式接口文档在 `/docs`。默认使用题包的虚构数据与本地 mock，数据库和文件分别保存在 Compose 卷。
+在 `http://127.0.0.1:8080/` 登录。选择身份后，可以用用户名或已绑定的手机号加密码登录，也可以用手机验证码登录。新读者可以在首页选择北馆或南馆，验证手机号并创建账号。读者进入「智能问答」，管理员进入馆藏后台并可配置本馆 Agent。登录后的角色和所属馆由服务端按账号记录确定。自行注册的账号统一为读者。交互式接口文档在 `/docs`。默认使用题包的虚构数据与本地 mock，数据库和文件分别保存在 Compose 卷。
 
 ```sh
 curl -fsS http://127.0.0.1:8080/healthz
@@ -106,7 +108,7 @@ curl -fsS http://127.0.0.1:8080/v1/books/BOOK_ID/versions/UPLOAD_ID/publish \
 
 按需使用 `LIBRARY_WEB_ENABLED=1 docker compose up -d worker` 启用联网。提交 `{"query":"Pride and Prejudice","web_search":true}` 查询 Open Library 公开书目。联网书目模式会向外部发送输入的检索词，用书名、作者或 ISBN 等公开词条。书目结果仅证明公开出版信息，本馆馆藏以本馆目录为依据。
 
-开馆时间、闭馆和公告类问题使用部署者按馆配置的 HTTPS RSS 或 Atom 源。配置例为 `LIBRARY_NOTICE_FEEDS='{"north":"https://library.example.org/notices.xml"}'`。管理员可从 `LIBRARY_NOTICE_FEED_OPTIONS` 为本馆提供的 HTTPS 来源中选择，例如 `{"north":["https://library.example.org/notices.xml"]}`。默认来源仍使用 `LIBRARY_NOTICE_FEEDS`。题包是虚构馆，默认没有相应官方域名。服务限制公告源请求时间和响应大小。
+提交 `{"query":"北馆开馆时间？","web_search":true}` 可查询馆方开放时间。开馆、闭馆和公告类问题使用部署者按馆配置的 HTTPS RSS 或 Atom 源。配置例为 `LIBRARY_NOTICE_FEEDS='{"north":"https://library.example.org/notices.xml"}'`。管理员可从 `LIBRARY_NOTICE_FEED_OPTIONS` 为本馆提供的 HTTPS 来源中选择，例如 `{"north":["https://library.example.org/notices.xml"]}`。默认来源仍使用 `LIBRARY_NOTICE_FEEDS`。题包是虚构馆，默认没有相应官方域名。服务限制公告源请求时间和响应大小。
 
 - RSS 和 Atom 的相对链接以公告源地址为基准解析。例如来源为 `https://library.example.org/news/feed.xml` 时，`hours` 会解析到 `https://library.example.org/news/hours`。公告列表只保留与来源同源的 HTTPS 链接。
 - 格式有效但没有条目的 RSS 或 Atom 源返回正常的空列表。HTML 错误页、无效的订阅内容和请求失败会标记为外部公告源不可用。读者端仍显示本馆已发布的公告和活动。问答 Worker 记录 `public_source_unavailable`，并继续使用可用的馆内证据。
@@ -161,6 +163,14 @@ LIBRARY_CUSTOM_MODEL_URL=http://mock:8098 docker compose up -d --wait api worker
 python3 scripts/check_model_management.py
 ```
 
+测试运行期间可查看模型尝试、模型切换和拒绝访问事件。重建容器前查看对应容器的日志。
+
+```sh
+docker compose logs --no-log-prefix api worker | grep -E 'model_attempt|model_switch|access_denied'
+```
+
+[已通过的常规验收记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45928918143)
+
 ## Kubernetes 发布验证
 
 [Verify 工作流](.github/workflows/verify.yml) 在 GitHub Actions 中运行两组检查。Compose 作业执行单元测试和核心集成测试。Kubernetes 作业构建以提交 SHA 标记的镜像，使用临时 kind 集群验证发布与回滚。
@@ -175,7 +185,7 @@ bash scripts/check_kubernetes.sh
 
 ### GHCR 发布演练
 
-在 GitHub Actions 手动运行 [Release verification](.github/workflows/release-verify.yml)。发布作业将应用、模拟模型及故障演练用候选镜像以提交 SHA 标签推到 GHCR，并记录推送后的镜像摘要。后续作业在新建的 kind 集群内直接按摘要拉取镜像，复用上面的问答、重建和回滚检查。验收时核对两个作业均成功、镜像摘要与集群拉取记录一致，以及回滚后的旧任务和新任务均通过。该演练使用 mock 与虚构资料。
+在 GitHub Actions 手动运行 [Release verification](.github/workflows/release-verify.yml)。发布作业将应用、模拟模型及故障演练用候选镜像以提交 SHA 标签推到 GHCR，并记录推送后的镜像摘要。后续作业在新建的 kind 集群内直接按摘要拉取镜像，复用上面的问答、重建和回滚检查。验收时核对两个作业均成功、镜像摘要与集群拉取记录一致，以及回滚后的旧任务和新任务均通过。该演练使用 mock 与虚构资料。[已通过的 GHCR 发布与回滚记录](https://github.com/haohaozaijianghu/community-library/actions/runs/45926584503)。
 
 ## Prompt 修订
 

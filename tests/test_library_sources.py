@@ -37,11 +37,13 @@ def test_notice_feed_is_per_tenant_and_same_origin(monkeypatch):
     monkeypatch.setattr(sources, "fetch", fetch)
     monkeypatch.setenv("LIBRARY_WEB_ENABLED", "1")
     monkeypatch.setenv("LIBRARY_NOTICE_FEEDS", '{"north":"https://north.example/notices"}')
-    job = {"id": "test", "query": "闭馆公告", "tenant": "north"}
-    evidence = sources.public_evidence(job)
-    assert [doc["url"] for doc in evidence] == ["https://north.example/1"]
-    assert "Closed Saturday" in evidence[0]["text"]
-    assert sources.public_evidence({**job, "tenant": "south"}) == []
+    for query in ("闭馆公告", "北馆开馆时间？", "北馆几点开门？", "北馆开放时间"):
+        job = {"id": "test", "query": query, "tenant": "north"}
+        evidence = sources.public_evidence(job)
+        assert [doc["url"] for doc in evidence] == ["https://north.example/1"]
+        assert "Closed Saturday" in evidence[0]["text"]
+        assert sources.public_evidence({**job, "tenant": "south"}) == []
+        assert sources.public_evidence(job, notices_enabled=False) == []
 
 
 def test_epub_keeps_spine_order_and_text_locations(tmp_path):
