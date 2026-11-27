@@ -655,11 +655,17 @@ function showWorkspace(user) {
   byId("workspace").hidden = byId("account").hidden = false;
   byId("staff-nav").hidden = byId("admin-toolbar").hidden = !admin;
   setAdminMenu(false);
+  byId("toggle-preview-history").setAttribute("aria-expanded", "false");
   byId("reader-nav").hidden = admin;
   byId("ask-heading").textContent = admin ? "Agent 试用" : "智能问答";
   setQuestionMode("books");
   restoreWorkspaceView();
 }
+
+byId("toggle-preview-history").addEventListener("click", event => {
+  const button = event.currentTarget;
+  button.setAttribute("aria-expanded", String(button.getAttribute("aria-expanded") !== "true"));
+});
 
 const loginForm = byId("login-form");
 const registerForm = byId("register-form");
@@ -1965,14 +1971,22 @@ function showHelpInboxEntry(inbox, entry, signal) {
   const card = document.createElement("article");
   const question = document.createElement("h3");
   const meta = document.createElement("p");
+  const state = document.createElement("span");
+  const time = document.createElement("time");
   card.className = "help-card";
   question.textContent = entry.query;
-  meta.className = "field-note";
-  meta.textContent = (entry.answered_at ? "已回复" : "待回复") + " · " + communityDate.format(new Date(entry.created_at));
+  meta.className = "help-meta field-note";
+  state.className = "status-pill";
+  state.dataset.state = entry.answered_at ? "published" : "ready";
+  state.textContent = entry.answered_at ? "已回复" : "待回复";
+  time.dateTime = entry.created_at;
+  time.textContent = communityDate.format(new Date(entry.created_at));
+  meta.append(state, time);
   card.append(question, meta);
   inbox.append(card);
   if (entry.answered_at) {
     const reply = document.createElement("p");
+    reply.className = "help-reply";
     reply.textContent = entry.reply;
     card.append(reply);
     return;

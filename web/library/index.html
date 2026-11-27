@@ -234,7 +234,10 @@
       </section>
       <div id="reader-view" class="reader-home" hidden>
         <aside class="reader-sidebar" aria-label="问答侧栏">
-          <button id="new-question" type="button"><span aria-hidden="true">＋</span> 新建对话</button>
+          <div class="conversation-toolbar">
+            <button id="new-question" type="button"><span aria-hidden="true">＋</span> 新建对话</button>
+            <button id="toggle-preview-history" class="secondary" type="button" aria-expanded="false" aria-controls="my-questions">历史会话</button>
+          </div>
           <section class="consultation-categories" aria-labelledby="category-title">
             <h2 id="category-title">咨询分类</h2>
             <button type="button" data-consult-mode="books" aria-pressed="true">馆藏资源</button>
@@ -542,7 +545,7 @@
         </dialog>
       </section>
       <section id="agent-view" class="agent-settings" aria-labelledby="agent-settings-title" hidden>
-        <section class="panel">
+        <section class="panel agent-form-panel">
           <h2 id="agent-settings-title" tabindex="-1">电子书检索 Agent</h2>
           <p>设置本馆的书目和正文检索，以及生成答案时使用的指令。</p>
           <form id="agent-form">
@@ -567,7 +570,7 @@
           </form>
           <p id="agent-status" role="status"></p>
         </section>
-        <aside class="panel">
+        <aside class="panel agent-model-panel">
           <h2>模型管理</h2>
           <p id="agent-model-mode" role="status">正在读取运行模式…</p>
           <p>添加供应商模型并测试连接后，回到这里选择本馆的回答模型。</p>
@@ -598,7 +601,7 @@
                 <div class="provider-actions">
                   <button id="toggle-provider-credentials" type="button" class="secondary"
                           aria-controls="provider-credentials" aria-expanded="false" disabled>配置凭据</button>
-                  <button id="discover-models" type="button" class="secondary" disabled>获取模型列表</button>
+                  <button id="discover-models" type="button" disabled>获取模型列表</button>
                 </div>
               </div>
               <form id="provider-credentials" hidden>
@@ -641,7 +644,7 @@
       <section id="accounts-view" class="account-workspace" aria-labelledby="accounts-title" hidden>
         <div class="account-page-heading">
           <div><h2 id="accounts-title" tabindex="-1">账号管理</h2><p id="accounts-scope"></p></div>
-          <button id="add-account" type="button">新增账号</button>
+          <button id="add-account" type="button"><span aria-hidden="true">＋</span> 新增账号</button>
         </div>
         <div class="panel">
           <p id="accounts-status" role="status"></p>
